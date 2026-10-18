@@ -1,0 +1,15 @@
+# 저작권 자료(교과서·지도서)와 한글 문서는 올리지 않음
+*.pdf
+*.hwp
+*.hwpx
+*.pptx
+*.zip
+pages/
+*.png
+*.jpg
+
+# 시스템 파일
+Thumbs.db
+desktop.ini
+.DS_Store
+~$*

@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>데이터 구조대</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* 레이아웃: 재난 관제실 콘솔. 상단 상황판 + 가운데 작전 화면(지도/표/그래프) 한 장씩 */
+:root{
+  --bg:#0e1a2b; --panel:#15263e; --panel-2:#1c3252; --line:#2c4569;
+  --text:#eaf1fa; --muted:#9fb3cc;
+  --signal:#ffb020; --alert:#ff5d4f; --ok:#39d98a; --data:#5cc8ff; --rumor:#b98cff;
+  --f-display:'Do Hyeon','Malgun Gothic',sans-serif;
+  --f-body:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--text)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1000px;margin:0 auto;padding-block:14px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:16px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.01em}
+h2{font-size:26px} h3{font-size:20px}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* 상단 상황판 */
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;justify-content:space-between;
+  padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:30px;height:30px;border-radius:50%;background:var(--signal);display:grid;place-items:center;
+  color:var(--bg);font-family:var(--f-display);font-size:18px}
+.brand h1{font-size:24px}
+.brand small{color:var(--muted);font-size:12px;display:block;line-height:1.2}
+.track{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.now{border-color:var(--signal);color:var(--signal)}
+.pill.done{background:var(--panel-2);color:var(--text)}
+.stats{display:flex;gap:14px;font-size:13px;color:var(--muted)}
+.stats b{color:var(--text);font-family:var(--f-mono)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--signal);text-transform:uppercase;font-weight:700}
+.muted{color:var(--muted)}
+.btn{border:0;border-radius:10px;padding:11px 18px;background:var(--signal);color:#1b1300;font-weight:700}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn.danger{background:var(--alert);color:#fff}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+/* 타이틀 */
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:center}
+.hero h2{font-size:clamp(34px,6vw,54px);line-height:1.05}
+.hero h2 em{font-style:normal;color:var(--signal)}
+.hero img{border-radius:12px;border:1px solid var(--line);width:100%}
+.pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pipe{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);min-width:0}
+.pipe b{font-family:var(--f-display);font-weight:400;font-size:19px;display:block}
+.pipe span{font-size:13px;color:var(--muted)}
+.pipe.d b{color:var(--data)} .pipe.i b{color:var(--signal)} .pipe.k b{color:var(--ok)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.step{border-top:3px solid var(--line);padding-top:8px;font-size:14px}
+.step b{display:block;font-size:15px}
+.step.s1{border-color:var(--data)} .step.s2{border-color:var(--signal)} .step.s3{border-color:var(--alert)}
+
+/* 브리핑 */
+.brief-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+.spec{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:6px;font-size:14px}
+.spec dt{color:var(--muted);font-size:12px}
+.spec dd{margin:0 0 4px}
+
+/* 수집 화면 */
+.hud{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.timer{flex:1 1 220px;min-width:0}
+.timer-label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.bar{height:8px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--signal);transition:width .2s linear}
+.bar.low i{background:var(--alert)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:13px;padding:4px 10px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line)}
+.chip b{font-family:var(--f-mono)}
+.mapbox{position:relative;max-width:100%}
+.mapbox canvas{display:block;width:100%;height:auto;aspect-ratio:768/480;border-radius:12px;border:1px solid var(--line);
+  touch-action:none;background:#2a3f2a}
+.toast{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(14,26,43,.92);border:1px solid var(--data);
+  color:var(--text);padding:6px 12px;border-radius:8px;font-size:13px;pointer-events:none;max-width:90%;text-align:center}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.dpad{display:none;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:6px;justify-content:center}
+.dpad button{border:1px solid var(--line);background:var(--panel-2);border-radius:10px;font-size:20px;touch-action:none;user-select:none}
+.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .d{grid-column:2;grid-row:2}.dpad .r{grid-column:3;grid-row:2}
+@media (pointer:coarse){.dpad{display:grid}}
+
+/* 가공 화면 */
+.step-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.step-no{font-family:var(--f-mono);font-size:12px;padding:2px 8px;border-radius:6px;background:var(--panel-2);color:var(--signal)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--panel-2)}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:rgba(92,200,255,.06)}
+tr.excluded td{color:var(--muted);text-decoration:line-through}
+tr.excluded td.st{text-decoration:none}
+tr.hint td{background:rgba(255,176,32,.08)}
+td:nth-child(2){white-space:nowrap}
+td.val{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tag{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
+.tag.in{color:var(--ok);border-color:var(--ok)}
+.tag.out{color:var(--alert);border-color:var(--alert)}
+.feedback{font-size:14px;border-left:3px solid var(--line);padding:6px 12px}
+.feedback.good{border-color:var(--ok)} .feedback.bad{border-color:var(--alert)}
+.choices{display:grid;gap:8px}
+.choice{text-align:left;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:12px 14px}
+.choice:hover{border-color:var(--data)}
+.choice.right{border-color:var(--ok)} .choice.wrong{border-color:var(--alert);opacity:.7}
+.chart{width:100%;height:auto;display:block}
+.chartbox{overflow-x:auto}
+
+/* 경보 화면 */
+.alert-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.atype{display:grid;gap:8px}
+.atype label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);cursor:pointer}
+.atype input{margin-top:5px;accent-color:var(--signal)}
+.atype label:has(input:checked){border-color:var(--signal)}
+.atype small{display:block;color:var(--muted);font-size:13px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dcard{text-align:left;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.dcard .nm{font-family:var(--f-display);font-size:19px}
+.dcard .v{font-family:var(--f-mono);font-size:14px}
+.dcard .crew{font-size:12px;color:var(--muted)}
+.dcard[aria-pressed="true"]{border-color:var(--alert);background:rgba(255,93,79,.12)}
+.dcard[aria-pressed="true"] .flag{color:var(--alert)}
+.flag{font-size:12px;color:var(--muted)}
+
+/* 결과 */
+.crewlist{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.crewcard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);min-width:0}
+.crewcard.safe{border-color:var(--ok)} .crewcard.hurt{border-color:var(--alert)}
+.crewcard b{font-family:var(--f-display);font-weight:400;font-size:19px;display:block}
+.crewcard .res{font-size:13px}
+.crewcard.safe .res{color:var(--ok)} .crewcard.hurt .res{color:var(--alert)}
+.score{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.score div{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.score b{font-family:var(--f-mono);font-size:22px;display:block}
+.score span{font-size:12px;color:var(--muted)}
+.concept{border-left:3px solid var(--signal);padding:4px 0 4px 14px;display:grid;gap:6px}
+.think{background:var(--panel-2);border-radius:10px;padding:12px 14px}
+.think b{color:var(--signal)}
+.proscons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.proscons ul{margin:6px 0 0;padding-left:18px}
+.proscons li{margin-bottom:6px}
+
+/* 모달 */
+.modal{position:fixed;inset:0;background:rgba(5,10,20,.7);display:grid;place-items:center;z-index:20;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.modal .card{max-width:480px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.item{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel-2);display:grid;gap:4px}
+.item .src{font-size:12px;color:var(--muted)}
+.item.rumor{border-color:var(--rumor)} .item.privacy{border-color:var(--alert)}
+
+@media (max-width:760px){
+  .hero,.brief-grid,.alert-grid,.proscons{grid-template-columns:1fr}
+  .crewlist,.score{grid-template-columns:1fr 1fr}
+  .steps,.pipeline{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">D</div>
+      <div><h1>데이터 구조대</h1><small>통합과학2 Ⅲ-1-02 과학 기술 사회에서 빅데이터 활용</small></div>
+    </div>
+    <nav class="track" id="track" aria-label="임무 진행"></nav>
+    <div class="stats">
+      <span>구출 <b id="st-rescue">0/0</b></span>
+      <span>수집 데이터 <b id="st-data">0</b></span>
+    </div>
+  </header>
+
+  <!-- 타이틀 -->
+  <section class="screen" id="sc-title">
+    <div class="card">
+      <div class="hero">
+        <div style="display:grid;gap:14px;min-width:0">
+          <p class="eyebrow">가람시 재난 데이터 관제실</p>
+          <h2>데이터를 모아<br><em>동료를 구하라</em></h2>
+          <p class="muted">집중호우, 미세먼지, 폭염이 차례로 가람시를 덮칩니다. 도시 곳곳의 관측 장비에서 실시간 데이터를 모으고, 분석해서, 위험 지역에 있는 대원에게 경보를 보내세요.</p>
+          <div class="row"><button class="btn" id="btn-start">임무 시작</button><span class="muted" style="font-size:13px">임무 3개 · 약 15분</span></div>
+        </div>
+        <img id="title-map" alt="가람시 지도: 하늘동, 산마루동, 강변동, 바다동 네 구역과 강, 바다, 분석 센터">
+      </div>
+      <div class="pipeline" aria-label="데이터가 지식이 되는 과정">
+        <div class="pipe d"><b>데이터</b><span>관측 장비가 잰 숫자 그대로의 원자료 (예: 각 지점 강수량)</span></div>
+        <div class="pipe i"><b>정보</b><span>정제·가공·시각화로 의미를 가진 자료 (예: 지역별 평균 강수량 그래프)</span></div>
+        <div class="pipe k"><b>지식</b><span>정보를 바탕으로 한 판단과 대책 (예: 강변동에 호우 경보)</span></div>
+      </div>
+      <div class="steps">
+        <div class="step s1"><b>1. 수집</b>지도를 돌아다니며 관측 장비의 데이터를 모읍니다. 출처가 불분명한 자료와 개인정보는 걸러 내세요.</div>
+        <div class="step s2"><b>2. 가공</b>분석 센터에서 오류값을 정제하고, 지역별로 정리해 그래프로 만듭니다.</div>
+        <div class="step s3"><b>3. 경보</b>그래프를 근거로 어떤 경보를 어느 지역에 보낼지 결정합니다.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 브리핑 -->
+  <section class="screen" id="sc-brief" hidden></section>
+
+  <!-- 수집 -->
+  <section class="screen" id="sc-collect" hidden>
+    <div class="card">
+      <div class="hud">
+        <div class="timer">
+          <div class="timer-label"><span id="timer-name">위험 도달까지</span><span class="mono" id="timer-sec">75초</span></div>
+          <div class="bar" id="timer-bar"><i style="width:100%"></i></div>
+        </div>
+        <div class="chips">
+          <span class="chip">관측 데이터 <b id="c-got">0</b>/8</span>
+          <span class="chip">걸러 낸 자료 <b id="c-block">0</b></span>
+        </div>
+        <button class="btn ghost" id="btn-upload">분석 센터로 전송</button>
+      </div>
+      <div class="mapbox">
+        <canvas id="map" width="768" height="480" tabindex="0" aria-label="가람시 지도. 방향키나 WASD로 이동, 지도를 눌러 그 위치로 이동"></canvas>
+        <div class="toast" id="toast" hidden></div>
+      </div>
+      <div class="dpad" aria-label="이동 버튼">
+        <button class="u" data-dir="up" aria-label="위">▲</button>
+        <button class="l" data-dir="left" aria-label="왼쪽">◀</button>
+        <button class="d" data-dir="down" aria-label="아래">▼</button>
+        <button class="r" data-dir="right" aria-label="오른쪽">▶</button>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--data)"></i>관측 장비 (밟으면 수집)</span>
+        <span><i style="background:var(--rumor)"></i>출처 확인이 필요한 자료</span>
+        <span><i style="background:var(--alert)"></i>개인정보가 담긴 자료</span>
+        <span><i style="background:var(--signal)"></i>분석 센터 (들어가면 전송)</span>
+        <span>이동: 방향키 · WASD · 지도 누르기</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 가공 -->
+  <section class="screen" id="sc-process" hidden></section>
+  <!-- 경보 -->
+  <section class="screen" id="sc-alert" hidden></section>
+  <!-- 결과 -->
+  <section class="screen" id="sc-result" hidden></section>
+  <!-- 최종 -->
+  <section class="screen" id="sc-final" hidden></section>
+</div>
+
+<div class="modal" id="modal" hidden><div class="card" id="modal-card" role="dialog" aria-modal="true"></div></div>
+
+<script>
+/* ===================== 기본 데이터 ===================== */
+const T = 32, COLS = 24, ROWS = 15;
+const DIST = [
+  {id:'sky',   name:'하늘동',   desc:'아파트·학교가 빽빽한 도심'},
+  {id:'hill',  name:'산마루동', desc:'산비탈 마을'},
+  {id:'river', name:'강변동',   desc:'하천 옆 저지대'},
+  {id:'sea',   name:'바다동',   desc:'해안 마을'},
+];
+const DNAME = Object.fromEntries(DIST.map(d => [d.id, d.name]));
+const CREW = {
+  sky:{name:'하람', color:'#ffb020', pos:[6,4]},
+  hill:{name:'도윤', color:'#5cc8ff', pos:[20,2]},
+  river:{name:'서아', color:'#ff8fb1', pos:[6,13]},
+  sea:{name:'지호', color:'#39d98a', pos:[16,11]},
+};
+const SENSOR_POS = {sky:[[3,2],[8,5]], hill:[[16,2],[21,5]], river:[[2,11],[8,13]], sea:[[14,11],[18,8]]};
+const ALERTS = [
+  {id:'rain',  name:'호우 경보',       act:'하천·지하 공간·산비탈에서 즉시 대피'},
+  {id:'dust',  name:'미세먼지 주의보', act:'실외 활동을 멈추고 실내로 이동'},
+  {id:'heat',  name:'폭염 경보',       act:'야외 작업을 멈추고 무더위 쉼터로 이동'},
+  {id:'surge', name:'해일 경보',       act:'해안에서 벗어나 높은 곳으로 대피'},
+];
+
+const MISSIONS = [
+  {
+    key:'rain', short:'집중호우', title:'임무 1 · 집중호우',
+    sensor:'강우량계', agency:'기상청 자동기상관측장비(AWS)처럼 10분마다 자동 전송',
+    metric:'3시간 누적 강수량', unit:'mm', digits:0, threshold:90,
+    rule:'3시간 누적 강수량 90 mm 이상이면 호우 경보 (기상청 기준)',
+    alert:'rain', timerName:'비구름 도착까지',
+    story:'오후 2시, 시간당 40 mm가 넘는 비구름이 가람시로 다가옵니다. 현장 조사를 나간 대원 4명이 네 구역에 흩어져 있어요. 각 구역 강우량계의 3시간 누적 강수량을 모아 침수·산사태 위험 구역을 찾아내세요.',
+    values:{sky:[22,31], hill:[96,-999], river:[118,104], sea:[45,52]},
+    traps:[
+      {type:'rumor', pos:[9,12], label:'익명 SNS 게시글', district:'river',
+       text:'"강변동 지하차도에 물이 2 m 찼대요!! 빨리 공유!!"', src:'출처: 익명 계정 · 사진 없음 · 작성 시각 불명',
+       why:'누가, 언제, 어떻게 측정했는지 알 수 없는 자료는 검증되지 않은 데이터입니다. 이런 자료를 분석에 섞으면 결과의 신뢰도가 떨어집니다.'},
+      {type:'privacy', pos:[19,4], label:'휴대전화 위치 기록', district:'hill',
+       text:'산마루동 주민 312명의 이름 · 전화번호 · 실시간 위치', src:'출처: 통신사 원본 기록 (비식별 처리 안 됨)',
+       why:'개인을 알아볼 수 있는 위치 기록은 사생활 침해 위험이 큽니다. 강수량 판단에는 필요하지도 않아요. 꼭 필요하다면 개인을 알아볼 수 없게 처리한 통계(예: 시간대별 인구 수)를 써야 합니다.'},
+    ],
+    concept:{
+      title:'데이터 → 정보 → 지식',
+      body:'각 지점의 강수량(데이터)을 지역별로 정리하고 그래프로 나타내면 정보가 되고, 이를 바탕으로 침수 예보 같은 대책(지식)을 세웁니다. 교과서의 "도시 침수 예보" 사례도 같은 과정이에요. 기상 위성과 관측소에서 모은 빅데이터를 분석하면 기상 현상의 패턴을 찾아 예측 정확도를 높이고 재해 예방 대책을 세울 수 있습니다.'
+    },
+    think:'산마루동 강우량계 하나가 -999를 보냈습니다. 이 값을 그대로 평균에 넣었다면 산마루동의 평균 강수량은 얼마가 되고, 어떤 판단을 내리게 됐을까요?'
+  },
+  {
+    key:'dust', short:'미세먼지', title:'임무 2 · 미세먼지',
+    sensor:'미세먼지 측정기', agency:'에어코리아처럼 대기 중 미세먼지 농도를 실시간 공개',
+    metric:'최근 2시간 평균 PM10 농도', unit:'µg/m³', digits:0, threshold:150,
+    rule:'PM10 시간 평균 150 µg/m³ 이상이 2시간 넘게 이어지면 미세먼지 주의보',
+    alert:'dust', timerName:'황사 띠 도착까지',
+    story:'황사와 미세먼지가 겹친 봄날, 대원들이 야외에서 토양 시료를 채취하고 있습니다. 바람을 타고 짙은 먼지 띠가 들어오는 중이에요. 구역별 미세먼지 측정기 값을 모아 대원들을 실내로 보내야 할 구역을 정하세요.',
+    values:{sky:[38,44], hill:[55,9999], river:[172,165], sea:[158,161]},
+    traps:[
+      {type:'rumor', pos:[4,5], label:'단톡방 메시지', district:'hill',
+       text:'"산마루동 공장에서 유독가스 나온대. 엄마 친구가 그러던데?"', src:'출처: 전달된 메시지 · 최초 작성자 모름',
+       why:'전해 들은 말은 측정값이 아니라서 검증할 방법이 없습니다. 이런 소문을 근거로 경보를 내리면 불필요한 혼란이 생기고 경보 자체를 믿지 않게 됩니다.'},
+      {type:'privacy', pos:[15,12], label:'CCTV 원본 영상', district:'sea',
+       text:'바다동 해안 산책로 CCTV 영상 3시간 분량 (행인 얼굴이 그대로 보임)', src:'출처: 구청 CCTV 서버 원본',
+       why:'얼굴이 드러난 영상은 개인을 알아볼 수 있는 비정형 데이터라서 사생활 침해 위험이 큽니다. 미세먼지 판단에는 측정기의 수치(정형 데이터)로 충분해요.'},
+    ],
+    concept:{
+      title:'국가가 제공하는 실시간 생활 데이터',
+      body:'에어코리아에서는 미세먼지와 오존 농도를, 국립해양조사원에서는 해수면 높이를 실시간으로 확인할 수 있습니다. 교과서 탐구처럼 디지털 탐구 도구로 교실·운동장·체육관의 미세먼지를 직접 재 보면(예: 35, 50, 40 µg/m³) 환기를 할지, 야외 활동을 줄일지 판단하는 근거가 됩니다.'
+    },
+    think:'산마루동 측정기 하나가 9999 µg/m³를 보냈습니다. 같은 구역의 다른 측정기와 값이 크게 다를 때, 그 까닭으로 무엇을 생각해 볼 수 있을까요?'
+  },
+  {
+    key:'heat', short:'폭염', title:'임무 3 · 폭염',
+    sensor:'체감온도 관측기', agency:'서울 열린데이터 광장처럼 도시 곳곳의 날씨를 실시간 공개',
+    metric:'오늘 최고 체감온도', unit:'℃', digits:1, threshold:35,
+    rule:'최고 체감온도 35 ℃ 이상이 이틀 넘게 이어질 것으로 보이면 폭염 경보 (내일도 비슷할 전망)',
+    alert:'heat', timerName:'한낮 최고 기온까지',
+    story:'8월 한낮, 대원들이 야외에서 시설 점검을 하고 있습니다. 같은 도시라도 건물이 빽빽한 곳과 바닷가는 더위가 다릅니다. 체감온도 데이터를 모아 폭염 위험 구역의 대원에게만 경보를 보내세요. 불필요한 경보도 줄여야 합니다.',
+    values:{sky:[36.4,35.8], hill:[31.2,null], river:[33.1,33.9], sea:[30.6,31.4]},
+    traps:[
+      {type:'rumor', pos:[13,1], label:'블로그 글', district:'sky',
+       text:'"오늘 하늘동 체감온도 50도 넘었음 ㄷㄷ 계란 익는 중"', src:'출처: 개인 블로그 · 측정 방법 없음',
+       why:'측정 장비도 방법도 알 수 없는 값입니다. 극단적인 숫자일수록 더 꼼꼼히 출처를 확인해야 해요.'},
+      {type:'privacy', pos:[3,13], label:'스마트워치 건강 기록', district:'river',
+       text:'강변동 주민 85명의 이름과 심박수 · 수면 패턴 기록', src:'출처: 건강 앱 서버 (동의 범위 확인 안 됨)',
+       why:'스마트워치로 심박수·수면 패턴을 재면 자신의 건강 상태를 확인할 수 있지만, 이름이 붙은 건강 기록은 매우 민감한 개인정보입니다. 동의 없이 모으면 사생활 침해가 됩니다.'},
+    ],
+    concept:{
+      title:'데이터가 많을수록 판단이 정확해진다',
+      body:'과학 실험에서 데이터의 양이 많을수록 결과의 신뢰도가 높아지고, 양이 적으면 편향된 결과를 얻을 수 있습니다. 하늘동처럼 건물이 많은 도심은 주변보다 더 뜨거워지기도 해요(도시 열섬). 관측 지점을 촘촘히 늘린 빅데이터가 있어야 이런 차이를 찾아낼 수 있습니다.'
+    },
+    think:'스마트워치 건강 데이터는 폭염 피해를 줄이는 데 도움이 될 수도 있습니다. 사생활을 지키면서 활용하려면 어떤 조건이 필요할까요?'
+  },
+];
+
+/* ===================== 지도 ===================== */
+function district(x,y){ return y < 7 ? (x < 12 ? 'sky' : 'hill') : (x < 12 ? 'river' : 'sea'); }
+function isSea(x,y){ return (x >= 20 && y >= 7) || (y >= 13 && x >= 15); }
+function isRoad(x,y){
+  if (isSea(x,y)) return false;
+  return (y===3 && x<20) || (y===7 && x<20) || (y===12 && x<20) || x===11 || (x===4 && y>=7) || (x===17 && y<=12);
+}
+function isRiver(x,y){ return (y===9 || y===10) && x < 20; }
+function isHQ(x,y){ return (x===12 || x===13) && (y===5 || y===6); }
+const HOUSES = new Set(['2,14','5,14','8,14','13,8','15,8','19,11']);
+function isBuilding(x,y){
+  if (isRoad(x,y) || isHQ(x,y)) return false;
+  if (HOUSES.has(x+','+y)) return true;
+  return district(x,y)==='sky' && x%3===1 && y%3===1;
+}
+function walkable(x,y){
+  if (x<0 || y<0 || x>=COLS || y>=ROWS) return false;
+  if (isSea(x,y) || isBuilding(x,y)) return false;
+  if (isRiver(x,y) && !isRoad(x,y)) return false;
+  return true;
+}
+
+const GRASS = {sky:'#8fae76', hill:'#7aa35f', river:'#93b47c', sea:'#b9b38a'};
+function drawStaticMap(){
+  const c = document.createElement('canvas'); c.width = COLS*T; c.height = ROWS*T;
+  const g = c.getContext('2d');
+  for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++){
+    const px=x*T, py=y*T;
+    if (isSea(x,y)){ g.fillStyle = '#2f6f99'; g.fillRect(px,py,T,T);
+      g.strokeStyle='rgba(255,255,255,.18)'; g.beginPath(); g.moveTo(px+6,py+12); g.quadraticCurveTo(px+12,py+8,px+18,py+12); g.stroke(); continue; }
+    g.fillStyle = GRASS[district(x,y)]; g.fillRect(px,py,T,T);
+    if ((x*7+y*13)%5===0){ g.fillStyle='rgba(0,0,0,.06)'; g.fillRect(px+8,py+10,3,3); }
+    if (isRiver(x,y)){
+      g.fillStyle = '#4a96c4'; g.fillRect(px,py,T,T);
+      g.strokeStyle='rgba(255,255,255,.22)'; g.beginPath(); g.moveTo(px+4,py+16); g.quadraticCurveTo(px+10,py+11,px+16,py+16); g.stroke();
+      if (isRoad(x,y)){ g.fillStyle='#b8a98a'; g.fillRect(px+3,py,T-6,T); g.fillStyle='#8a7a5f'; g.fillRect(px+3,py,2,T); g.fillRect(px+T-5,py,2,T); }
+      continue;
+    }
+    if (isRoad(x,y)){
+      g.fillStyle = '#d9d0b8'; g.fillRect(px,py,T,T);
+      g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(px,py+T-2,T,2);
+    }
+    if (district(x,y)==='hill' && !isRoad(x,y) && !isHQ(x,y) && x%4===2 && y%3===0){
+      g.fillStyle='#55803f'; g.beginPath(); g.moveTo(px+4,py+28); g.lineTo(px+16,py+6); g.lineTo(px+28,py+28); g.fill();
+      g.fillStyle='#e8efe1'; g.beginPath(); g.moveTo(px+12,py+13); g.lineTo(px+16,py+6); g.lineTo(px+20,py+13); g.fill();
+    }
+    if (district(x,y)==='hill' && !isRoad(x,y) && (x*5+y*3)%7===0){
+      g.fillStyle='#3f6b33'; g.beginPath(); g.arc(px+10,py+12,6,0,7); g.fill();
+    }
+    if (isBuilding(x,y)){
+      const tall = district(x,y)==='sky';
+      g.fillStyle = tall ? '#5d6b82' : '#a7795a'; g.fillRect(px+3,py+3,T-6,T-6);
+      g.fillStyle = tall ? '#7c8ba3' : '#c9563f'; g.fillRect(px+3,py+3,T-6,7);
+      g.fillStyle = 'rgba(255,240,180,.75)';
+      if (tall){ for (let i=0;i<3;i++) for (let j=0;j<2;j++) g.fillRect(px+7+i*7,py+14+j*7,3,3); }
+      else g.fillRect(px+13,py+18,6,8);
+    }
+  }
+  // 분석 센터
+  g.fillStyle='#2a3a55'; g.fillRect(12*T+2,5*T+2,2*T-4,2*T-4);
+  g.fillStyle='#ffb020'; g.fillRect(12*T+2,5*T+2,2*T-4,8);
+  g.strokeStyle='#ffb020'; g.lineWidth=2; g.beginPath(); g.arc(13*T,5*T+28,9,Math.PI,0); g.stroke();
+  g.beginPath(); g.moveTo(13*T,5*T+28); g.lineTo(13*T+6,5*T+16); g.stroke();
+  g.fillStyle='#ffb020'; g.font='bold 11px "IBM Plex Sans KR", sans-serif'; g.textAlign='center';
+  g.fillText('분석 센터', 13*T, 6*T+22);
+  // 구역 이름
+  g.font = '20px "Do Hyeon", sans-serif'; g.textAlign='left';
+  const labels = [['하늘동',8,22],['산마루동',14*T+8,22],['강변동',8,8*T+20],['바다동',14*T+8,8*T+20]];
+  // 산마루동 라벨이 도로와 겹치지 않게 살짝 이동
+  labels[1][1] = 18*T+6;
+  for (const [t,lx,ly] of labels){
+    g.fillStyle='rgba(14,26,43,.55)'; const w=g.measureText(t).width+12; g.fillRect(lx-6,ly-17,w,24);
+    g.fillStyle='#fff'; g.fillText(t,lx,ly);
+  }
+  return c;
+}
+
+/* ===================== 상태 ===================== */
+const S = {
+  m:0,
+  total:{rescued:0, crew:0, falseAlarm:0, rumorBlocked:0, rumorTaken:0, privBlocked:0, privTaken:0, cleanMiss:0, sensors:0, chooseMiss:0, missionLog:[]},
+  run:null,
+};
+const $ = s => document.querySelector(s);
+const SCREENS = ['title','brief','collect','process','alert','result','final'];
+function show(name){
+  for (const s of SCREENS) $('#sc-'+s).hidden = (s !== name);
+  window.scrollTo({top:0, behavior:'instant' in window ? 'instant' : 'auto'});
+}
+function fmt(v, m){
+  if (v === null || v === undefined) return '—';
+  return Number(v).toFixed(m.digits);
+}
+function updateTop(){
+  const track = $('#track'); track.innerHTML='';
+  MISSIONS.forEach((m,i)=>{
+    const p = document.createElement('span'); p.className = 'pill' + (i < S.m ? ' done' : i===S.m && S.run ? ' now' : '');
+    p.textContent = (i+1)+'. '+m.short; track.appendChild(p);
+  });
+  $('#st-rescue').textContent = S.total.rescued+'/'+S.total.crew;
+  $('#st-data').textContent = S.total.sensors + (S.run && !S.run.done ? S.run.sensors.filter(s=>s.got).length : 0);
+}
+
+/* ===================== 모달 ===================== */
+function modal(html, buttons){
+  const card = $('#modal-card'); card.innerHTML = html;
+  const row = document.createElement('div'); row.className='row';
+  buttons.forEach((b,i)=>{
+    const el = document.createElement('button'); el.className = 'btn ' + (b.cls||''); el.textContent = b.label;
+    el.onclick = () => { $('#modal').hidden = true; b.onClick && b.onClick(); };
+    row.appendChild(el); if (i===0) setTimeout(()=>el.focus(),30);
+  });
+  card.appendChild(row);
+  $('#modal').hidden = false;
+}
+
+/* ===================== 브리핑 ===================== */
+function startMission(){
+  const m = MISSIONS[S.m];
+  const sensors = [];
+  for (const d of DIST) SENSOR_POS[d.id].forEach((p,i)=>sensors.push({d:d.id, i, x:p[0], y:p[1], v:m.values[d.id][i], got:false}));
+  S.run = {
+    sensors, traps: m.traps.map(t=>({...t, done:false, taken:false})),
+    player:{x:12.5, y:7.5, face:0}, path:[], time:75, maxTime:75, inHQ:false,
+    rows:[], cleanMiss:0, chooseMiss:0, paused:true, blocked:0,
+  };
+  const b = $('#sc-brief');
+  b.innerHTML = `
+    <div class="card">
+      <p class="eyebrow">${m.title}</p>
+      <div class="brief-grid">
+        <div style="display:grid;gap:12px;min-width:0">
+          <h2>${m.short} 위험에서 대원 4명을 구하라</h2>
+          <p>${m.story}</p>
+          <p class="muted" style="font-size:14px">대원 위치: ${DIST.map(d=>`${DNAME[d.id]} ${CREW[d.id].name}`).join(' · ')}</p>
+        </div>
+        <dl class="spec">
+          <dt>수집할 데이터</dt><dd>${m.sensor} 8대의 <b>${m.metric}</b> (${m.unit})</dd>
+          <dt>데이터 출처</dt><dd>${m.agency}</dd>
+          <dt>경보 기준</dt><dd>${m.rule}</dd>
+          <dt>제한 시간</dt><dd>75초 안에 수집하고 분석 센터로 전송</dd>
+        </dl>
+      </div>
+      <div class="row"><button class="btn" id="btn-go">출동</button></div>
+    </div>`;
+  $('#btn-go').onclick = () => { show('collect'); S.run.paused = false; $('#timer-name').textContent = m.timerName; $('#map').focus(); };
+  updateTop(); show('brief');
+}
+
+/* ===================== 수집 (캔버스 게임) ===================== */
+const cv = $('#map'), ctx = cv.getContext('2d');
+let BG = null;
+const keys = new Set();
+const KEYMAP = {ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
+addEventListener('keydown', e => {
+  if (!S.run || S.run.paused || $('#sc-collect').hidden) return;
+  const d = KEYMAP[e.code]; if (d){ keys.add(d); S.run.path = []; e.preventDefault(); }
+});
+addEventListener('keyup', e => { const d = KEYMAP[e.code]; if (d) keys.delete(d); });
+document.querySelectorAll('.dpad button').forEach(b=>{
+  const d = b.dataset.dir;
+  b.addEventListener('pointerdown', e=>{ e.preventDefault(); keys.add(d); if (S.run) S.run.path=[]; });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev, ()=>keys.delete(d)));
+});
+cv.addEventListener('pointerdown', e=>{
+  if (!S.run || S.run.paused) return;
+  const r = cv.getBoundingClientRect();
+  const tx = Math.floor((e.clientX - r.left) / r.width * COLS), ty = Math.floor((e.clientY - r.top) / r.height * ROWS);
+  S.run.path = findPath(Math.floor(S.run.player.x), Math.floor(S.run.player.y), tx, ty);
+});
+function findPath(sx,sy,tx,ty){
+  if (!walkable(tx,ty)) return [];
+  const prev = new Map(), q=[[sx,sy]], key=(x,y)=>x+','+y; prev.set(key(sx,sy), null);
+  while (q.length){
+    const [x,y] = q.shift();
+    if (x===tx && y===ty){
+      const path=[]; let k=key(x,y);
+      while (k){ const [a,b]=k.split(',').map(Number); path.unshift([a+.5,b+.5]); k=prev.get(k); }
+      path.shift(); return path;
+    }
+    for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx, ny=y+dy, k=key(nx,ny);
+      if (!prev.has(k) && walkable(nx,ny)){ prev.set(k,key(x,y)); q.push([nx,ny]); }
+    }
+  }
+  return [];
+}
+function canStand(x,y){
+  const r=.26;
+  return walkable(Math.floor(x-r),Math.floor(y-r)) && walkable(Math.floor(x+r),Math.floor(y-r)) &&
+         walkable(Math.floor(x-r),Math.floor(y+r)) && walkable(Math.floor(x+r),Math.floor(y+r));
+}
+let toastTimer=0;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.hidden=true,2200); }
+
+function update(dt){
+  const R = S.run, P = R.player, m = MISSIONS[S.m];
+  const speed = 3.4*dt;
+  let dx=0, dy=0;
+  if (keys.has('up')) dy-=1; if (keys.has('down')) dy+=1; if (keys.has('left')) dx-=1; if (keys.has('right')) dx+=1;
+  if (!dx && !dy && R.path.length){
+    const [tx,ty] = R.path[0]; const ddx=tx-P.x, ddy=ty-P.y, dist=Math.hypot(ddx,ddy);
+    if (dist < speed){ P.x=tx; P.y=ty; R.path.shift(); }
+    else { dx=ddx/dist; dy=ddy/dist; }
+  }
+  if (dx||dy){
+    const n=Math.hypot(dx,dy); dx/=n; dy/=n;
+    if (canStand(P.x+dx*speed, P.y)) P.x += dx*speed;
+    if (canStand(P.x, P.y+dy*speed)) P.y += dy*speed;
+    P.face = Math.atan2(dy,dx);
+  }
+  // 관측 장비 수집
+  for (const s of R.sensors){
+    if (!s.got && Math.hypot(P.x-(s.x+.5), P.y-(s.y+.5)) < .6){
+      s.got = true;
+      R.rows.push({id:'', d:s.d, kind:'sensor', v:s.v, src:`${m.sensor} ${DNAME[s.d]}-${s.i+1}`,
+        bad: s.v===null ? 'missing' : (s.v===-999 || s.v===9999) ? 'error' : null});
+      toast(`${m.sensor} ${DNAME[s.d]}-${s.i+1} 수신: ${s.v===null ? '값 없음' : fmt(s.v,m)+' '+m.unit}`);
+      $('#c-got').textContent = R.sensors.filter(x=>x.got).length; updateTop();
+    }
+  }
+  // 함정 자료
+  for (const t of R.traps){
+    if (!t.done && Math.hypot(P.x-(t.pos[0]+.5), P.y-(t.pos[1]+.5)) < .6){ t.done = true; keys.clear(); R.path=[]; trapDecision(t); return; }
+  }
+  // 분석 센터
+  const inHQ = P.x>=12 && P.x<14 && P.y>=5 && P.y<7;
+  if (inHQ && !R.inHQ){ R.inHQ = true; keys.clear(); R.path=[]; askUpload(); }
+  if (!inHQ) R.inHQ = false;
+  // 시간
+  R.time -= dt;
+  const pct = Math.max(0, R.time/R.maxTime*100);
+  $('#timer-bar i').style.width = pct+'%';
+  $('#timer-bar').classList.toggle('low', R.time < 20);
+  $('#timer-sec').textContent = Math.max(0, Math.ceil(R.time))+'초';
+  if (R.time <= 0){ R.paused = true; modal(`<h3>시간 종료</h3><p>${m.short} 위험이 닥쳤습니다. 지금까지 모은 데이터 ${R.sensors.filter(s=>s.got).length}개를 분석 센터로 원격 전송합니다.</p>`, [{label:'분석 시작', onClick:goProcess}]); }
+}
+
+function trapDecision(t){
+  const R = S.run; R.paused = true;
+  const tag = t.type==='rumor' ? '출처 확인 필요' : '개인정보 포함';
+  modal(`
+    <p class="eyebrow">${tag}</p>
+    <h3>이 자료도 수집할까요?</h3>
+    <div class="item ${t.type}"><b>${t.label}</b><span>${t.text}</span><span class="src">${t.src}</span></div>`,
+  [
+    {label:'수집하지 않는다', onClick:()=>{
+      if (t.type==='rumor') S.total.rumorBlocked++; else S.total.privBlocked++;
+      R.blocked++; $('#c-block').textContent = R.blocked;
+      modal(`<h3 style="color:var(--ok)">잘 걸러 냈어요</h3><p>${t.why}</p>`, [{label:'계속 수집', onClick:()=>R.paused=false}]);
+    }},
+    {label:'수집한다', cls:'ghost', onClick:()=>{
+      t.taken = true;
+      if (t.type==='rumor') S.total.rumorTaken++; else S.total.privTaken++;
+      R.rows.push({id:'', d:t.district, kind:t.type, v:null, src:t.label, text:t.text, bad:t.type});
+      const head = t.type==='rumor' ? '검증되지 않은 데이터가 섞였습니다' : '사생활 침해 위험이 있는 데이터입니다';
+      modal(`<h3 style="color:var(--alert)">${head}</h3><p>${t.why}</p><p class="muted">이 자료는 분석 센터에서 직접 걸러 내야 합니다.</p>`, [{label:'계속 수집', onClick:()=>R.paused=false}]);
+    }},
+  ]);
+}
+function askUpload(){
+  const R = S.run, n = R.sensors.filter(s=>s.got).length;
+  if (!n){ toast('아직 모은 데이터가 없습니다. 관측 장비를 찾아보세요.'); return; }
+  R.paused = true;
+  modal(`<h3>분석 센터 도착</h3><p>관측 데이터 <b class="mono">${n}/8</b>개를 모았습니다. ${n<8?'데이터가 많을수록 판단이 정확해집니다. 비어 있는 구역은 분석할 수 없어요.':'모든 관측 장비의 데이터를 모았습니다.'}</p>`,
+    n<8 ? [{label:'더 수집하기', cls:'ghost', onClick:()=>R.paused=false},{label:'분석 시작', onClick:goProcess}]
+        : [{label:'분석 시작', onClick:goProcess}]);
+}
+$('#btn-upload').onclick = () => {
+  if (!S.run || S.run.paused) return;
+  const n = S.run.sensors.filter(s=>s.got).length;
+  S.run.paused = true;
+  modal(`<h3>원격 전송</h3><p>분석 센터까지 가지 않고 지금 모은 데이터 <b class="mono">${n}/8</b>개로 분석을 시작할까요?</p>`,
+    [{label:'계속 수집', cls:'ghost', onClick:()=>S.run.paused=false},{label:'분석 시작', onClick:goProcess}]);
+};
+
+/* 그리기 */
+let particles = [];
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function drawSensorIcon(key, x, y, got, t){
+  const cx=x*T+T/2, cy=y*T+T/2;
+  if (!got){
+    const r = 10 + (reduceMotion ? 4 : (Math.sin(t*4)+1)*4);
+    ctx.strokeStyle='rgba(92,200,255,.7)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.stroke();
+  }
+  ctx.globalAlpha = got ? .45 : 1;
+  ctx.fillStyle='#10233a'; ctx.beginPath(); ctx.arc(cx,cy,10,0,7); ctx.fill();
+  ctx.strokeStyle='#5cc8ff'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#5cc8ff'; ctx.strokeStyle='#5cc8ff';
+  if (key==='rain'){ ctx.fillRect(cx-4,cy-6,8,12); ctx.fillStyle='#10233a'; ctx.fillRect(cx-2,cy-4,4,4); }
+  else if (key==='dust'){ ctx.lineWidth=1.5; for (let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(cx-5,cy+i*4); ctx.lineTo(cx+5,cy+i*4); ctx.stroke(); } }
+  else { ctx.fillRect(cx-1.5,cy-7,3,9); ctx.beginPath(); ctx.arc(cx,cy+4,3.5,0,7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  if (got){ ctx.strokeStyle='#39d98a'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(cx+4,cy-10); ctx.lineTo(cx+8,cy-6); ctx.lineTo(cx+14,cy-14); ctx.stroke(); }
+}
+function drawTrap(tr, t){
+  const cx=tr.pos[0]*T+T/2, cy=tr.pos[1]*T+T/2 + (reduceMotion?0:Math.sin(t*3+tr.pos[0])*2);
+  if (tr.type==='rumor'){
+    ctx.fillStyle='#b98cff'; ctx.beginPath(); ctx.ellipse(cx,cy-2,11,8,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx-4,cy+4); ctx.lineTo(cx-8,cy+10); ctx.lineTo(cx+1,cy+5); ctx.fill();
+    ctx.fillStyle='#1b1030'; ctx.font='bold 12px sans-serif'; ctx.textAlign='center'; ctx.fillText('?',cx,cy+2);
+  } else {
+    ctx.fillStyle='#ff5d4f'; ctx.fillRect(cx-8,cy-2,16,12);
+    ctx.strokeStyle='#ff5d4f'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(cx,cy-3,5,Math.PI,0); ctx.stroke();
+    ctx.fillStyle='#2a0d0a'; ctx.fillRect(cx-1,cy+2,2,4);
+  }
+}
+function drawCrew(id, t){
+  const c = CREW[id], [x,y] = c.pos, cx=x*T+T/2, cy=y*T+T/2;
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(cx,cy+11,7,3,0,0,7); ctx.fill();
+  ctx.fillStyle=c.color; ctx.fillRect(cx-5,cy-2,10,12);
+  ctx.fillStyle='#f3d2b3'; ctx.beginPath(); ctx.arc(cx,cy-6,5,0,7); ctx.fill();
+  ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(cx,cy-8,5.5,Math.PI,0); ctx.fill();
+  ctx.font='bold 11px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center';
+  const w = ctx.measureText(c.name).width+8;
+  ctx.fillStyle='rgba(14,26,43,.75)'; ctx.fillRect(cx-w/2,cy-28,w,15);
+  ctx.fillStyle='#fff'; ctx.fillText(c.name,cx,cy-17);
+}
+function drawPlayer(P, t){
+  const cx=P.x*T, cy=P.y*T;
+  ctx.fillStyle='rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(cx,cy+12,10,4,0,0,7); ctx.fill();
+  const bob = reduceMotion ? 0 : Math.sin(t*6)*1.5;
+  ctx.save(); ctx.translate(cx,cy+bob);
+  ctx.strokeStyle='#eaf1fa'; ctx.lineWidth=2;
+  for (const [ax,ay] of [[-9,-9],[9,-9],[-9,9],[9,9]]){
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(ax,ay); ctx.stroke();
+    ctx.fillStyle='rgba(234,241,250,.35)'; ctx.beginPath(); ctx.arc(ax,ay,5,0,7); ctx.fill();
+  }
+  ctx.fillStyle='#ffb020'; ctx.beginPath(); ctx.arc(0,0,7,0,7); ctx.fill();
+  ctx.fillStyle='#0e1a2b'; ctx.beginPath(); ctx.arc(Math.cos(P.face)*3,Math.sin(P.face)*3,2.5,0,7); ctx.fill();
+  ctx.restore();
+}
+function drawWeather(key, t, dt){
+  if (key==='dust'){ ctx.fillStyle='rgba(176,140,80,.22)'; ctx.fillRect(0,0,cv.width,cv.height); }
+  if (key==='heat'){ ctx.fillStyle='rgba(255,120,40,.10)'; ctx.fillRect(0,0,cv.width,cv.height);
+    const g = ctx.createRadialGradient(5*T,3*T,10,5*T,3*T,260); g.addColorStop(0,'rgba(255,90,40,.22)'); g.addColorStop(1,'rgba(255,90,40,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,cv.width,cv.height); }
+  if (key==='rain'){ ctx.fillStyle='rgba(20,40,70,.18)'; ctx.fillRect(0,0,cv.width,cv.height); }
+  if (reduceMotion) return;
+  while (particles.length < (key==='rain'?110:key==='dust'?70:0)) particles.push({x:Math.random()*cv.width, y:Math.random()*cv.height, s:Math.random()});
+  for (const p of particles){
+    if (key==='rain'){
+      p.y += (420+p.s*200)*dt; p.x -= 60*dt;
+      ctx.strokeStyle='rgba(200,225,255,.45)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-3,p.y+10); ctx.stroke();
+    } else if (key==='dust'){
+      p.x += (30+p.s*40)*dt; p.y += Math.sin(t+p.s*9)*10*dt;
+      ctx.fillStyle='rgba(140,110,60,.45)'; ctx.beginPath(); ctx.arc(p.x,p.y,1.2+p.s*1.5,0,7); ctx.fill();
+    }
+    if (p.y>cv.height){ p.y=-10; p.x=Math.random()*cv.width+40; }
+    if (p.x>cv.width+10){ p.x=-10; } if (p.x<-20){ p.x=cv.width; }
+  }
+}
+function render(t, dt){
+  if (!BG) BG = drawStaticMap();
+  ctx.drawImage(BG,0,0);
+  if (!S.run) return;
+  const R=S.run, m=MISSIONS[S.m];
+  // 경로 미리보기
+  ctx.fillStyle='rgba(255,176,32,.6)';
+  for (const [x,y] of R.path){ ctx.beginPath(); ctx.arc(x*T,y*T,2.5,0,7); ctx.fill(); }
+  for (const s of R.sensors) drawSensorIcon(m.key, s.x, s.y, s.got, t);
+  for (const tr of R.traps) if (!tr.done) drawTrap(tr, t);
+  for (const d of DIST) drawCrew(d.id, t);
+  drawPlayer(R.player, t);
+  drawWeather(m.key, t, dt);
+}
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(.05, (now-last)/1000); last = now;
+  const active = S.run && !$('#sc-collect').hidden;
+  if (active && !S.run.paused && $('#modal').hidden) update(dt);
+  if (active) render(now/1000, S.run.paused ? 0 : dt);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===================== 가공 ===================== */
+function rowValueText(r, m){
+  if (r.kind==='rumor') return r.text;
+  if (r.kind==='privacy') return r.text;
+  return r.v===null ? '— (값 없음)' : fmt(r.v,m)+' '+m.unit;
+}
+function goProcess(){
+  const R = S.run, m = MISSIONS[S.m];
+  R.paused = true; keys.clear();
+  const order = DIST.map(d=>d.id);
+  R.rows.sort((a,b)=> order.indexOf(a.d)-order.indexOf(b.d) || (a.kind==='sensor'?0:1)-(b.kind==='sensor'?0:1) || a.src.localeCompare(b.src));
+  R.rows.forEach((r,i)=>{ r.id = 'R'+String(i+1).padStart(2,'0'); r.excluded = false; });
+  const p = $('#sc-process');
+  p.innerHTML = `
+    <div class="card">
+      <div class="step-head"><span class="step-no">가공 1</span><h2>원자료 정제</h2></div>
+      <p>수집한 원자료 <b class="mono">${R.rows.length}</b>개입니다. 분석에 넣으면 안 되는 자료를 찾아 <b>행을 눌러 제외</b>하세요.
+      측정 장비의 오류값, 값이 비어 있는 결측값, 출처를 확인할 수 없는 자료, 개인정보가 담긴 자료가 대상입니다.</p>
+      <div class="tablebox"><table>
+        <thead><tr><th>번호</th><th>구역</th><th>출처</th><th>${m.metric}</th><th>분석에</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+      <p class="muted" style="font-size:13px">참고: 이 지역 ${m.metric}의 정상 범위는 대략 ${m.key==='rain'?'0~200 mm':m.key==='dust'?'0~1000 µg/m³':'20~45 ℃'}입니다.</p>
+      <div class="row"><button class="btn" id="btn-clean">정제 완료</button></div>
+      <div id="clean-fb"></div>
+    </div>
+    <div class="card" id="proc2" hidden>
+      <div class="step-head"><span class="step-no">가공 2</span><h2>데이터를 정보로</h2></div>
+      <p>정제한 측정값을 어떻게 가공해야 구역별 위험을 한눈에 비교할 수 있을까요?</p>
+      <div class="choices" id="choices"></div>
+      <div id="choose-fb"></div>
+    </div>
+    <div class="card" id="proc3" hidden>
+      <div class="step-head"><span class="step-no">가공 3</span><h2>구역별 ${m.metric}</h2></div>
+      <div class="chartbox" id="chart"></div>
+      <p class="muted" style="font-size:14px">점선은 경보 기준(${m.threshold} ${m.unit})입니다. 회색 빗금은 데이터가 없어 판단할 수 없는 구역이에요.</p>
+      <div class="row"><button class="btn" id="btn-to-alert">경보 단계로</button></div>
+    </div>`;
+  renderRows();
+  $('#btn-clean').onclick = checkClean;
+  show('process'); updateTop();
+}
+function renderRows(hint){
+  const R=S.run, m=MISSIONS[S.m], tb=$('#rows');
+  if (!R.rows.length){ tb.innerHTML = `<tr><td colspan="5" class="muted">수집한 데이터가 없습니다.</td></tr>`; return; }
+  tb.innerHTML='';
+  for (const r of R.rows){
+    const tr = document.createElement('tr');
+    tr.className = (r.excluded?'excluded':'') + (hint && r.bad && !r.excluded ? ' hint':'');
+    tr.tabIndex = 0;
+    tr.innerHTML = `<td class="mono">${r.id}</td><td>${DNAME[r.d]}</td><td>${r.src}</td><td class="${r.kind==='sensor'?'val':''}">${rowValueText(r,m)}</td>
+      <td class="st"><span class="tag ${r.excluded?'out':'in'}">${r.excluded?'제외':'포함'}</span></td>`;
+    const toggle = ()=>{ r.excluded=!r.excluded; renderRows(hint); };
+    tr.onclick = toggle;
+    tr.onkeydown = e=>{ if (e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } };
+    tb.appendChild(tr);
+  }
+}
+function checkClean(){
+  const R=S.run, fb=$('#clean-fb');
+  const badIn = R.rows.filter(r=>r.bad && !r.excluded);
+  const goodOut = R.rows.filter(r=>!r.bad && r.excluded);
+  if (!badIn.length && !goodOut.length){
+    const reasons = R.rows.filter(r=>r.bad).map(r=>`${r.id}: ${({error:'측정 오류값 (정상 범위를 크게 벗어남)',missing:'결측값 (측정값 없음)',rumor:'검증되지 않은 자료',privacy:'개인정보 포함 자료'})[r.bad]}`);
+    fb.innerHTML = `<p class="feedback good">정제 완료. ${reasons.length ? '제외한 자료 — '+reasons.join(' · ') : '이번에는 걸러 낼 자료가 없었습니다.'}</p>`;
+    $('#btn-clean').disabled = true;
+    document.querySelectorAll('#rows tr').forEach(tr=>{ tr.onclick=null; tr.onkeydown=null; tr.style.cursor='default'; });
+    showChoices();
+    return;
+  }
+  R.cleanMiss++; S.total.cleanMiss++;
+  const msgs = [];
+  if (badIn.length) msgs.push(`분석에 넣으면 안 되는 자료가 <b>${badIn.length}개</b> 남아 있어요. 같은 구역의 다른 값과 비교해 보거나, 출처를 다시 보세요.`);
+  if (goodOut.length) msgs.push(`정상 측정값을 <b>${goodOut.length}개</b> 제외했어요. 값이 크다는 것만으로 오류는 아닙니다. 같은 구역의 다른 측정값과 비슷하다면 실제 상황일 수 있어요.`);
+  if (R.cleanMiss >= 2) msgs.push('힌트: 확인이 필요한 행을 노란색으로 표시했습니다.');
+  fb.innerHTML = `<p class="feedback bad">${msgs.join('<br>')}</p>`;
+  renderRows(R.cleanMiss >= 2);
+}
+function showChoices(){
+  const m=MISSIONS[S.m], box=$('#choices'); $('#proc2').hidden=false;
+  const opts = [
+    {t:'측정값을 모두 더해 가람시 전체 값 하나로 만든다', ok:false, why:'하나로 합치면 어느 구역이 위험한지 알 수 없습니다.'},
+    {t:`구역별 평균을 계산해, 경보 기준선과 함께 막대그래프로 나타낸다`, ok:true, why:'구역끼리 비교하고 기준과 견줄 수 있게 정리하는 것이 데이터를 정보로 바꾸는 가공입니다.'},
+    {t:'측정 시각 순서대로 표에 나열만 한다', ok:false, why:'나열만 해서는 구역별 차이와 기준 초과 여부가 한눈에 보이지 않습니다.'},
+  ];
+  box.innerHTML='';
+  opts.forEach(o=>{
+    const b=document.createElement('button'); b.className='choice'; b.textContent=o.t;
+    b.onclick=()=>{
+      if (o.ok){
+        b.classList.add('right');
+        $('#choose-fb').innerHTML=`<p class="feedback good">${o.why}</p>`;
+        box.querySelectorAll('button').forEach(x=>x.disabled=true);
+        $('#proc3').hidden=false; drawChart($('#chart'));
+        $('#btn-to-alert').onclick = goAlert;
+        $('#proc3').scrollIntoView({behavior: reduceMotion?'auto':'smooth', block:'start'});
+      } else {
+        b.classList.add('wrong'); b.disabled=true; S.run.chooseMiss++; S.total.chooseMiss++;
+        $('#choose-fb').innerHTML=`<p class="feedback bad">${o.why}</p>`;
+      }
+    };
+    box.appendChild(b);
+  });
+}
+function districtMeans(useRows){
+  const m=MISSIONS[S.m], out={};
+  for (const d of DIST){
+    let vals;
+    if (useRows) vals = S.run.rows.filter(r=>r.d===d.id && r.kind==='sensor' && !r.excluded && r.v!==null).map(r=>r.v);
+    else vals = m.values[d.id].filter(v=>v!==null && v!==-999 && v!==9999);
+    out[d.id] = vals.length ? {mean: vals.reduce((a,b)=>a+b,0)/vals.length, n: vals.length} : null;
+  }
+  return out;
+}
+function drawChart(el){
+  const m=MISSIONS[S.m], means=districtMeans(true);
+  const W=640,H=300, L=56, Rt=16, Tp=24, B=46, ih=H-Tp-B, iw=W-L-Rt;
+  const maxV = Math.max(m.threshold*1.35, ...Object.values(means).filter(Boolean).map(x=>x.mean*1.12));
+  const nice = (()=>{ const raw=maxV/5, p=10**Math.floor(Math.log10(raw)), f=raw/p; const st=(f<=1?1:f<=2?2:f<=5?5:10)*p; return {step:st, top:Math.ceil(maxV/st)*st}; })();
+  const y = v => Tp + ih - v/nice.top*ih;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="구역별 ${m.metric} 막대그래프">
+    <defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#1c3252"/><line x1="0" y1="0" x2="0" y2="8" stroke="#4a6080" stroke-width="3"/></pattern></defs>`;
+  for (let v=0; v<=nice.top+1e-9; v+=nice.step){
+    s += `<line x1="${L}" x2="${W-Rt}" y1="${y(v)}" y2="${y(v)}" stroke="#2c4569" stroke-width="1"/>
+          <text x="${L-8}" y="${y(v)+4}" fill="#9fb3cc" font-size="12" text-anchor="end" font-family="IBM Plex Mono, monospace">${+v.toFixed(2)}</text>`;
+  }
+  s += `<text x="${L-8}" y="${Tp-8}" fill="#9fb3cc" font-size="12" text-anchor="end">${m.unit}</text>`;
+  const bw = iw/4;
+  DIST.forEach((d,i)=>{
+    const mm = means[d.id], x0 = L + i*bw + bw*.22, w = bw*.56;
+    if (mm){
+      const over = mm.mean >= m.threshold;
+      s += `<rect x="${x0}" y="${y(mm.mean)}" width="${w}" height="${y(0)-y(mm.mean)}" rx="4" fill="${over?'#ff5d4f':'#5cc8ff'}"/>
+            <text x="${x0+w/2}" y="${y(mm.mean)-7}" fill="#eaf1fa" font-size="14" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="600">${fmt(mm.mean,m)}</text>`;
+    } else {
+      s += `<rect x="${x0}" y="${Tp+ih*.35}" width="${w}" height="${ih*.65}" rx="4" fill="url(#hatch)"/>
+            <text x="${x0+w/2}" y="${Tp+ih*.35-7}" fill="#9fb3cc" font-size="13" text-anchor="middle">데이터 없음</text>`;
+    }
+    s += `<text x="${x0+w/2}" y="${H-B+20}" fill="#eaf1fa" font-size="15" text-anchor="middle" font-family="Do Hyeon, sans-serif">${d.name}</text>
+          <text x="${x0+w/2}" y="${H-B+37}" fill="#9fb3cc" font-size="11" text-anchor="middle">측정값 ${mm?mm.n:0}개</text>`;
+  });
+  s += `<line x1="${L}" x2="${W-Rt}" y1="${y(m.threshold)}" y2="${y(m.threshold)}" stroke="#ffb020" stroke-width="2" stroke-dasharray="6 5"/>
+        <text x="${W-Rt}" y="${y(m.threshold)-6}" fill="#ffb020" font-size="12" text-anchor="end">경보 기준 ${m.threshold}</text>
+        <line x1="${L}" x2="${W-Rt}" y1="${y(0)}" y2="${y(0)}" stroke="#9fb3cc"/></svg>`;
+  el.innerHTML = s;
+}
+
+/* ===================== 경보 ===================== */
+function goAlert(){
+  const m=MISSIONS[S.m], means=districtMeans(true), A=$('#sc-alert');
+  S.run.sel = new Set(); S.run.atype = null;
+  A.innerHTML = `
+    <div class="card">
+      <div class="step-head"><span class="step-no">경보</span><h2>정보를 판단으로: 경보 발령</h2></div>
+      <p>그래프를 근거로 <b>어떤 경보</b>를 <b>어느 구역</b>에 보낼지 정하세요. 위험한 구역을 놓치면 대원이 다치고, 안전한 구역에 경보를 남발하면 경보를 믿지 않게 됩니다.</p>
+      <div class="alert-grid">
+        <div style="display:grid;gap:8px;min-width:0">
+          <h3>1. 경보 종류</h3>
+          <div class="atype">${ALERTS.map(a=>`<label><input type="radio" name="atype" id="at-${a.id}" value="${a.id}"><span><b>${a.name}</b><small>${a.act}</small></span></label>`).join('')}</div>
+        </div>
+        <div style="display:grid;gap:8px;align-content:start;min-width:0">
+          <h3>2. 보낼 구역 (눌러서 선택)</h3>
+          <div class="dgrid">${DIST.map(d=>{ const mm=means[d.id]; return `
+            <button class="dcard" id="dc-${d.id}" aria-pressed="false" data-d="${d.id}">
+              <span class="nm">${d.name}</span>
+              <span class="v">${mm?fmt(mm.mean,m)+' '+m.unit:'데이터 없음'}</span>
+              <span class="crew">대원 ${CREW[d.id].name} · ${d.desc}</span>
+              <span class="flag">경보 안 보냄</span>
+            </button>`; }).join('')}</div>
+          <div class="chartbox" id="chart-mini" style="margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="row"><button class="btn danger" id="btn-send" disabled>경보 발송</button><span class="muted" id="send-sum" style="font-size:14px">경보 종류를 고르세요.</span></div>
+    </div>`;
+  drawChart($('#chart-mini'));
+  const sum = ()=>{
+    const n=S.run.sel.size, a=ALERTS.find(x=>x.id===S.run.atype);
+    $('#btn-send').disabled = !a;
+    $('#send-sum').textContent = !a ? '경보 종류를 고르세요.' : n ? `${a.name} → ${[...S.run.sel].map(d=>DNAME[d]).join(', ')}` : `${a.name}를 보낼 구역이 없습니다. 이대로 보내면 모든 구역에 '경보 없음'을 알립니다.`;
+  };
+  A.querySelectorAll('input[name=atype]').forEach(i=>i.onchange=()=>{ S.run.atype=i.value; sum(); });
+  A.querySelectorAll('.dcard').forEach(b=>b.onclick=()=>{
+    const d=b.dataset.d; if (S.run.sel.has(d)) S.run.sel.delete(d); else S.run.sel.add(d);
+    const on=S.run.sel.has(d); b.setAttribute('aria-pressed', on); b.querySelector('.flag').textContent = on?'경보 보냄':'경보 안 보냄'; sum();
+  });
+  $('#btn-send').onclick = evaluate;
+  show('alert');
+}
+
+/* ===================== 결과 ===================== */
+function evaluate(){
+  const m=MISSIONS[S.m], R=S.run, truth=districtMeans(false), seen=districtMeans(true);
+  const right = R.atype===m.alert;
+  let rescued=0, fa=0; const cards=[];
+  for (const d of DIST){
+    const danger = truth[d.id].mean >= m.threshold, sent = R.sel.has(d.id);
+    let safe, res;
+    if (danger && sent && right){ safe=true; res='경보를 받고 대피 완료'; }
+    else if (danger && sent){ safe=false; res=`경보 종류가 달라 잘못 대피 (실제 위험: ${m.short})`; }
+    else if (danger){ safe=false; res = seen[d.id] ? '경보를 받지 못해 위험에 노출' : '데이터가 없어 위험을 놓침'; }
+    else if (sent){ safe=true; fa++; res='안전했지만 불필요한 경보로 작업 중단'; }
+    else { safe=true; res='위험 없음, 작업 계속'; }
+    if (safe) rescued++;
+    cards.push(`<div class="crewcard ${safe?'safe':'hurt'}"><b>${CREW[d.id].name}</b><span class="muted" style="font-size:13px">${d.name} · 실제 ${fmt(truth[d.id].mean,m)} ${m.unit}</span><div class="res">${res}</div></div>`);
+  }
+  const got = R.sensors.filter(s=>s.got).length;
+  const taken = R.traps.filter(t=>t.taken).length;
+  S.total.rescued += rescued; S.total.crew += 4; S.total.falseAlarm += fa; S.total.sensors += got;
+  S.total.missionLog.push({short:m.short, rescued, fa, got, taken, right});
+  const stars = (rescued===4?1:0) + (fa===0 && right?1:0) + (taken===0 && R.cleanMiss===0?1:0);
+  const nRows = R.rows.length, nGood = R.rows.filter(r=>!r.bad).length;
+  const last = S.m === MISSIONS.length-1;
+  $('#sc-result').innerHTML = `
+    <div class="card">
+      <p class="eyebrow">${m.title} 결과</p>
+      <h2>대원 4명 중 ${rescued}명 안전 ${'★'.repeat(stars)}<span style="color:var(--line)">${'★'.repeat(3-stars)}</span></h2>
+      <div class="crewlist">${cards.join('')}</div>
+      <div class="score">
+        <div><b>${got}/8</b><span>수집한 관측 데이터</span></div>
+        <div><b>${taken}</b><span>섞여 들어온 문제 자료</span></div>
+        <div><b>${R.cleanMiss}</b><span>정제 다시 하기</span></div>
+        <div><b>${fa}</b><span>불필요한 경보</span></div>
+      </div>
+      <div class="pipeline">
+        <div class="pipe d"><b>데이터</b><span>원자료 ${nRows}개 수집 → 정상 측정값 ${nGood}개만 남김</span></div>
+        <div class="pipe i"><b>정보</b><span>구역별 평균 ${m.metric} 막대그래프와 경보 기준선</span></div>
+        <div class="pipe k"><b>지식</b><span>${ALERTS.find(a=>a.id===R.atype).name}${right ? '' : ' (알맞은 경보: '+ALERTS.find(a=>a.id===m.alert).name+')'} → ${R.sel.size ? [...R.sel].map(d=>DNAME[d]).join(', ') : '보낸 구역 없음'}</span></div>
+      </div>
+      <div class="concept"><h3>${m.concept.title}</h3><p>${m.concept.body}</p></div>
+      <div class="think"><b>생각해 보기</b><p>${m.think}</p></div>
+      <div class="row"><button class="btn" id="btn-next">${last ? '최종 보고서 보기' : '다음 임무'}</button></div>
+    </div>`;
+  $('#btn-next').onclick = ()=>{ S.m++; S.run=null; if (last) finalReport(); else startMission(); };
+  S.run.done = true; updateTop(); show('result');
+}
+
+function finalReport(){
+  const t=S.total, log=t.missionLog;
+  $('#sc-final').innerHTML = `
+    <div class="card">
+      <p class="eyebrow">최종 보고서</p>
+      <h2>대원 ${t.crew}명 중 ${t.rescued}명 구출</h2>
+      <div class="score">
+        <div><b>${t.sensors}/24</b><span>수집한 관측 데이터</span></div>
+        <div><b>${t.rumorBlocked}/3</b><span>걸러 낸 검증 안 된 자료</span></div>
+        <div><b>${t.privBlocked}/3</b><span>지켜 낸 개인정보</span></div>
+        <div><b>${t.falseAlarm}</b><span>불필요한 경보</span></div>
+      </div>
+      <div class="tablebox"><table>
+        <thead><tr><th>임무</th><th>안전한 대원</th><th>수집 데이터</th><th>경보 종류</th><th>불필요한 경보</th></tr></thead>
+        <tbody>${log.map(l=>`<tr style="cursor:default"><td>${l.short}</td><td class="val">${l.rescued}/4</td><td class="val">${l.got}/8</td><td>${l.right?'알맞음':'틀림'}</td><td class="val">${l.fa}</td></tr>`).join('')}</tbody>
+      </table></div>
+      <h3>게임으로 돌아본 빅데이터 활용</h3>
+      <div class="proscons">
+        <div class="card" style="padding:14px">
+          <b style="color:var(--ok)">장점</b>
+          <ul>
+            <li>도시 곳곳의 데이터를 실시간으로 모아 현상을 빠르게 이해하고 정확하게 예측했습니다. (구출 ${t.rescued}명)</li>
+            <li>관측 지점이 많을수록 구역별 차이를 찾아낼 수 있었습니다. 데이터가 없는 구역은 판단할 수 없었어요.</li>
+            <li>기상 관측, 대기질, 도시 생활 데이터처럼 일상의 빅데이터가 안전과 편리를 높입니다.</li>
+          </ul>
+        </div>
+        <div class="card" style="padding:14px">
+          <b style="color:var(--alert)">문제점</b>
+          <ul>
+            <li><b>사생활 침해</b>: 위치 기록, CCTV 영상, 건강 기록처럼 개인을 알아볼 수 있는 자료 (수집 ${t.privTaken}회)</li>
+            <li><b>검증되지 못한 데이터</b>: SNS 소문, 전해 들은 말, 출처 없는 숫자 (수집 ${t.rumorTaken}회)</li>
+            <li><b>지나친 데이터 의존</b>: 장비 오류값(-999, 9999)을 그대로 믿었다면 판단이 완전히 달라졌을 거예요. (정제 다시 하기 ${t.cleanMiss}회)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="think"><b>모둠 토의</b>
+        <p>1. 이 게임의 "데이터 → 정보 → 지식" 과정을 우리 학교 생활에 적용한다면, 어떤 데이터를 모아 어떤 결정을 내릴 수 있을까요?</p>
+        <p>2. 과학 실험, 유전체 분석, 신약 개발, 교통 중 한 분야를 골라 빅데이터가 어떻게 쓰이는지, 어떤 문제가 생길 수 있는지 정리해 보세요.</p>
+      </div>
+      <div class="row"><button class="btn" id="btn-again">처음부터 다시</button></div>
+    </div>`;
+  $('#btn-again').onclick = ()=>{ S.m=0; S.run=null; S.total={rescued:0, crew:0, falseAlarm:0, rumorBlocked:0, rumorTaken:0, privBlocked:0, privTaken:0, cleanMiss:0, sensors:0, chooseMiss:0, missionLog:[]}; updateTop(); startMission(); };
+  updateTop(); show('final');
+}
+
+/* ===================== 시작 ===================== */
+function initTitle(){
+  BG = drawStaticMap();
+  const c = document.createElement('canvas'); c.width=BG.width; c.height=BG.height;
+  const g = c.getContext('2d'); g.drawImage(BG,0,0);
+  $('#title-map').src = c.toDataURL('image/png');
+}
+$('#btn-start').onclick = startMission;
+updateTop();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(initTitle); else initTitle();
+initTitle();
+</script>

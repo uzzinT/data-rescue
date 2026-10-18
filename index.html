@@ -1,0 +1,1178 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>데이터 구조대 2D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* 레이아웃: 게임 화면(16:10 무대) 위에 HUD·대사창을 겹치고, 분석·결과는 무대 아래 일반 페이지로 */
+:root{
+  --bg:#0b1626; --panel:#13233a; --panel-2:#1a2f4d; --line:#2a4366;
+  --text:#eaf1fa; --muted:#9fb3cc;
+  --signal:#ffb020; --alert:#ff5d4f; --ok:#39d98a; --data:#5cc8ff; --rumor:#b98cff;
+  --f-display:'Do Hyeon','Malgun Gothic',sans-serif;
+  --f-body:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--text)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1040px;margin:0 auto;padding-block:14px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:16px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance}
+h2{font-size:26px} h3{font-size:20px}
+p{margin:0}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--signal);font-weight:700;text-transform:uppercase}
+.btn{border:0;border-radius:10px;padding:11px 18px;background:var(--signal);color:#1b1300;font-weight:700}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn.danger{background:var(--alert);color:#fff}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:14px;min-width:0}
+
+/* 타이틀 */
+.title{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);
+  background:var(--panel) center/cover no-repeat}
+.title::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,22,38,.55),rgba(11,22,38,.92) 70%)}
+.title-in{position:relative;display:grid;gap:16px;padding:clamp(20px,5vw,48px);justify-items:center;text-align:center}
+.title .kicker{font-family:var(--f-mono);font-size:12px;letter-spacing:.3em;color:var(--data)}
+.title h1{font-size:clamp(42px,9vw,78px);line-height:1;color:#fff;text-shadow:0 0 24px rgba(92,200,255,.45)}
+.title h1 em{font-style:normal;color:var(--signal)}
+.title .sub{color:var(--muted)}
+.title input{background:rgba(19,35,58,.85);border:1px solid var(--line);border-radius:10px;padding:11px 14px;width:min(320px,100%);text-align:center}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:820px}
+.key{background:rgba(19,35,58,.85);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:13px;color:var(--muted)}
+.key b{display:block;color:var(--text);font-size:15px}
+.key .g{color:var(--ok)} .key .r{color:var(--alert)} .key .p{color:var(--rumor)}
+
+/* 게임 무대 */
+.stage{position:relative;width:100%;aspect-ratio:960/600;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#20301f;
+  font-size:clamp(10px,1.45vw,14px);user-select:none;-webkit-user-select:none}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.hud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;gap:8px;padding:8px 10px;pointer-events:none}
+.hbox{background:rgba(11,22,38,.78);border:1px solid rgba(92,200,255,.25);border-radius:10px;padding:5px 9px;display:grid;gap:3px;min-width:0;line-height:1.3}
+@media (max-width:600px){.hud{padding:5px}.hbox{padding:3px 6px}.meter{width:72px;height:5px}}
+.hbox .lbl{display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
+.hbox .lbl b{color:var(--text);font-family:var(--f-mono);font-weight:600}
+.meter{height:7px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden;width:clamp(90px,16vw,180px)}
+.meter i{display:block;height:100%;background:var(--signal)}
+.meter.hp i{background:var(--ok)}
+.meter.low i{background:var(--alert)}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;position:absolute;left:0;right:0;top:clamp(54px,9vw,66px);pointer-events:none;padding:0 8px}
+.chip{background:rgba(11,22,38,.85);border:1px solid var(--line);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.chip.ai{border-color:var(--data);color:var(--data)}
+.chip.red{border-color:var(--alert);color:#ffb3ab}
+.chip.green{border-color:var(--ok);color:#a8f0cb}
+.log{position:absolute;left:10px;bottom:10px;background:rgba(11,22,38,.8);border:1px solid rgba(92,200,255,.25);border-radius:8px;
+  padding:6px 8px;font-family:var(--f-mono);font-size:.85em;line-height:1.45;color:#bfe6ff;white-space:pre;pointer-events:none;max-width:48%;overflow:hidden}
+.log .h{color:var(--muted)}
+.toast{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);background:rgba(11,22,38,.92);border:1px solid var(--data);
+  padding:8px 14px;border-radius:10px;text-align:center;white-space:pre-line;pointer-events:none;max-width:80%;font-size:1.05em}
+.dialog{position:absolute;left:4%;right:4%;bottom:4%;background:rgba(11,22,38,.94);border:1px solid var(--line);border-radius:12px;
+  padding:12px 16px 10px;cursor:pointer;display:grid;gap:4px;font-size:1.15em}
+.dialog .who{font-size:.8em;font-weight:700;letter-spacing:.06em;color:var(--alert)}
+.dialog .who.ai{color:var(--data)} .dialog .who.me{color:var(--signal)}
+.dialog .txt{white-space:pre-line;min-height:2.9em}
+.dialog .hint{font-size:.75em;color:var(--muted);justify-self:end}
+.touch{position:absolute;right:10px;bottom:10px;display:none;gap:10px}
+.touch button{width:64px;height:64px;border-radius:50%;border:2px solid rgba(255,255,255,.35);font-weight:700;font-size:13px;touch-action:none}
+.touch .dash{background:rgba(255,176,32,.75);color:#1b1300}
+.touch .shield{background:rgba(92,200,255,.65);color:#04223a}
+@media (pointer:coarse){.touch{display:flex}}
+.modal{position:absolute;inset:0;background:rgba(5,10,20,.66);display:grid;place-items:center;padding:12px}
+.modal .card{max-width:440px;width:100%;font-size:14px;padding:16px;gap:10px;max-height:100%;overflow:auto}
+.item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);display:grid;gap:3px}
+.item .src{font-size:12px;color:var(--muted)}
+.item.privacy{border-color:var(--alert)}
+
+/* 분석·결과 페이지 */
+.step-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.step-no{font-family:var(--f-mono);font-size:12px;padding:2px 8px;border-radius:6px;background:var(--panel-2);color:var(--signal)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--panel-2)}
+tbody tr.tog{cursor:pointer}
+tbody tr.tog:hover{background:rgba(92,200,255,.06)}
+tr.excluded td{color:var(--muted);text-decoration:line-through}
+tr.excluded td.st{text-decoration:none}
+tr.hint td{background:rgba(255,176,32,.24)}
+tr.hint td:first-child{box-shadow:inset 5px 0 0 var(--signal)}
+tr.hint .chk{color:var(--signal);font-size:12px;font-weight:700;margin-left:6px}
+.ctrlbar{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 6px;color:var(--text);background:var(--panel-2)}
+.help-btn{position:absolute;left:50%;top:8px;transform:translateX(-50%);border:1px solid var(--line);background:rgba(11,22,38,.85);border-radius:999px;padding:2px 12px;font-size:1em}
+textarea{width:100%;min-height:76px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--text);font:inherit;resize:vertical}
+.stars{display:grid;gap:4px;font-size:14px}
+.stars .on{color:var(--signal)} .stars .off{color:var(--muted)}
+details.mapview summary{cursor:pointer;font-weight:600}
+details.mapview canvas{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line);margin-top:10px}
+.lives{color:var(--alert);letter-spacing:2px}
+.dialog .bar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dialog .skip{border:1px solid var(--line);background:transparent;border-radius:6px;padding:0 8px;font-size:.75em;color:var(--muted)}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
+.tag.in{color:var(--ok);border-color:var(--ok)} .tag.out{color:var(--alert);border-color:var(--alert)}
+.feedback{font-size:14px;border-left:3px solid var(--line);padding:6px 12px}
+.feedback.good{border-color:var(--ok)} .feedback.bad{border-color:var(--alert)}
+.slider{display:grid;gap:6px}
+.slider input{width:100%;accent-color:var(--signal)}
+.slider .lbl{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.q{display:grid;gap:8px;border-top:1px dashed var(--line);padding-top:12px}
+.q p b{color:var(--signal)}
+.opts{display:grid;gap:6px}
+.opt{text-align:left;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:10px 12px}
+.opt:hover{border-color:var(--data)}
+.opt.right{border-color:var(--ok)} .opt.wrong{border-color:var(--alert);opacity:.7}
+.chart{width:100%;height:auto;display:block}
+.alert-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.atype{display:grid;gap:8px}
+.atype label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);cursor:pointer}
+.atype input{margin-top:5px;accent-color:var(--signal)}
+.atype label:has(input:checked){border-color:var(--signal)}
+.atype small{display:block;color:var(--muted);font-size:13px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dcard{text-align:left;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.dcard .nm{font-family:var(--f-display);font-size:19px}
+.dcard .v{font-family:var(--f-mono);font-size:14px}
+.dcard .crew,.dcard .flag{font-size:12px;color:var(--muted)}
+.dcard[aria-pressed="true"]{border-color:var(--alert);background:rgba(255,93,79,.12)}
+.dcard[aria-pressed="true"] .flag{color:var(--alert)}
+.crewlist{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.crewcard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);min-width:0}
+.crewcard.safe{border-color:var(--ok)} .crewcard.hurt{border-color:var(--alert)}
+.crewcard b{font-family:var(--f-display);font-weight:400;font-size:19px;display:block}
+.crewcard .res{font-size:13px}
+.crewcard.safe .res{color:var(--ok)} .crewcard.hurt .res{color:var(--alert)}
+.score{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.score div{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.score b{font-family:var(--f-mono);font-size:22px;display:block}
+.score span{font-size:12px;color:var(--muted)}
+.pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pipe{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);min-width:0}
+.pipe b{font-family:var(--f-display);font-weight:400;font-size:19px;display:block}
+.pipe span{font-size:13px;color:var(--muted)}
+.pipe.d b{color:var(--data)} .pipe.i b{color:var(--signal)} .pipe.k b{color:var(--ok)}
+.concept{border-left:3px solid var(--signal);padding:4px 0 4px 14px;display:grid;gap:6px}
+.think{background:var(--panel-2);border-radius:10px;padding:12px 14px;display:grid;gap:4px}
+.think b{color:var(--signal)}
+.say{display:grid;gap:4px;border-left:3px solid var(--data);padding:4px 0 4px 14px}
+.say .who{font-size:12px;font-weight:700;color:var(--data)}
+.proscons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.proscons ul{margin:6px 0 0;padding-left:18px}
+.proscons li{margin-bottom:6px}
+@media (max-width:760px){
+  .keys{grid-template-columns:1fr 1fr}
+  .alert-grid,.proscons{grid-template-columns:1fr}
+  .crewlist,.score{grid-template-columns:1fr 1fr}
+  .pipeline{grid-template-columns:1fr}
+  .log{display:none}
+}
+</style>
+
+<div class="wrap">
+  <!-- 타이틀 -->
+  <section id="sc-title" class="title">
+    <div class="title-in">
+      <p class="kicker">DATA RESCUE · BIG DATA DISASTER RUN</p>
+      <h1>데이터 <em>구조대</em></h1>
+      <p class="sub">통합과학2 Ⅲ-1-02 과학 기술 사회에서 빅데이터 활용 · 2D 재난 구조 액션</p>
+      <input id="in-name" maxlength="10" placeholder="대원 이름 (예: 김민준)" aria-label="대원 이름">
+      <button class="btn" id="btn-start" style="font-size:18px;padding:13px 28px">재난 데이터센터 출근</button>
+      <div class="keys">
+        <div class="key"><b>WASD · 방향키</b>드론 이동<br>(휴대폰: 화면 왼쪽 끌기)</div>
+        <div class="key"><b>스페이스 · Shift</b>돌진<br>위험 피하기 · <span class="p">봇 부수기</span></div>
+        <div class="key"><b>E 키 (누르고 있기)</b>보호막<br>피해 75% 감소 · 느려짐</div>
+        <div class="key"><b>드론 3대</b>체력이 0이 되면 1대 잃음<br><span class="r">3대 모두 잃으면 임무 1부터</span></div>
+      </div>
+      <div class="keys" style="grid-template-columns:repeat(3,1fr)">
+        <div class="key"><b>관측소</b>파란 기둥 위에 잠시 머물면<br>데이터를 내려받아요</div>
+        <div class="key"><b>AI 예측</b>데이터가 쌓이면 <span style="color:var(--data)">파란 원</span>으로<br>위험을 미리 알려 줘요</div>
+        <div class="key"><b>조심할 것</b><span class="p">보라 봇</span>=가짜 뉴스<br><span class="r">빨간 자물쇠</span>=개인정보</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 게임 -->
+  <section id="sc-game" hidden>
+    <div class="stage" id="stage">
+      <canvas id="cv" width="960" height="600" tabindex="0" aria-label="게임 화면"></canvas>
+      <div class="hud" id="hud">
+        <div class="hbox">
+          <div class="lbl"><span id="h-mission">임무</span><b id="h-time">100초</b></div>
+          <div class="meter" id="m-time"><i style="width:100%"></i></div>
+          <div class="lbl"><span>관측소</span><b id="h-sensor">0/8</b></div>
+        </div>
+        <div class="hbox">
+          <div class="lbl"><span>드론 <b class="lives" id="h-lives">♥♥♥</b></span><b id="h-hp">100</b></div>
+          <div class="meter hp" id="m-hp"><i style="width:100%"></i></div>
+          <div class="lbl"><span>데이터</span><b id="h-rows">0행</b></div>
+        </div>
+      </div>
+      <div class="chiprow" id="chips"></div>
+      <div class="log" id="log"></div>
+      <div class="toast" id="toast" hidden></div>
+      <div class="touch" id="touch">
+        <button class="shield" id="t-shield">보호막</button>
+        <button class="dash" id="t-dash">돌진</button>
+      </div>
+      <button class="help-btn" id="btn-help" title="조작법 보기 (H)">조작법 ?</button>
+      <div class="dialog" id="dialog" hidden><span class="who" id="d-who"></span><span class="txt" id="d-txt"></span>
+        <div class="bar"><button class="skip" id="d-skip">대사 건너뛰기 ▶▶</button><span class="hint">클릭 · 스페이스 ▶</span></div></div>
+      <div class="modal" id="modal" hidden><div class="card" id="modal-card" role="dialog" aria-modal="true"></div></div>
+    </div>
+    <div class="ctrlbar" style="margin-top:10px">
+      <span><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동</span>
+      <span><kbd>Space</kbd>/<kbd>Shift</kbd> 돌진 (봇 부수기)</span>
+      <span><kbd>E</kbd> 누르고 있기 보호막</span>
+      <span><kbd>H</kbd> 조작법·일시정지</span>
+      <span>휴대폰: 화면 끌어서 이동, 오른쪽 아래 버튼</span>
+    </div>
+  </section>
+
+  <!-- 분석 / 결과 / 최종 -->
+  <section id="sc-analysis" hidden style="display:grid;gap:16px"></section>
+  <section id="sc-result" hidden></section>
+  <section id="sc-final" hidden></section>
+</div>
+
+<script>
+/* =========================================================
+   수업 내용(임무 · 대사 · 질문) — 내용을 바꾸려면 MISSIONS, STORY만 고치면 됩니다.
+   ========================================================= */
+const T = 40, COLS = 24, ROWS = 15, W = 960, H = 600;
+const DIST = [
+  {id:'sky',   name:'하늘동',   desc:'아파트·학교가 빽빽한 도심'},
+  {id:'hill',  name:'산마루동', desc:'산비탈 마을'},
+  {id:'river', name:'강변동',   desc:'하천 옆 저지대'},
+  {id:'sea',   name:'바다동',   desc:'해안 마을'},
+];
+const DNAME = Object.fromEntries(DIST.map(d=>[d.id,d.name]));
+const CREW = {
+  sky:{name:'하람', color:'#ffb020', pos:[6,4]},
+  hill:{name:'도윤', color:'#5cc8ff', pos:[20,2]},
+  river:{name:'서아', color:'#ff8fb1', pos:[6,13]},
+  sea:{name:'지호', color:'#39d98a', pos:[16,11]},
+};
+const SENSOR_POS = {sky:[[3,2],[8,5]], hill:[[16,2],[21,5]], river:[[2,11],[8,13]], sea:[[14,11],[18,8]]};
+const ALERTS = [
+  {id:'rain',  name:'호우 경보',       act:'하천·지하 공간·산비탈에서 즉시 대피'},
+  {id:'dust',  name:'미세먼지 주의보', act:'실외 활동을 멈추고 실내로 이동'},
+  {id:'heat',  name:'폭염 경보',       act:'야외 작업을 멈추고 무더위 쉼터로 이동'},
+  {id:'surge', name:'해일 경보',       act:'해안에서 벗어나 높은 곳으로 대피'},
+];
+
+const MISSIONS = [
+  {
+    key:'rain', short:'집중호우', title:'임무 1 · 집중호우', sensor:'강우량계',
+    metric:'3시간 누적 강수량', unit:'mm', digits:0, threshold:90, sd:32,
+    rule:'3시간 누적 강수량 90 mm 이상 → 호우 경보 (기상청 기준)', alert:'rain', timeName:'비구름 도착까지',
+    values:{sky:[30,38], hill:[108,-999], river:[126,118], sea:[58,64]},
+    hazard:{strike:{every:1.6, dmg:13, r:48, name:'낙뢰'}},
+    rumor:'"강변동 지하차도에 물이 2 m 찼대요!! 빨리 공유!!"',
+    privacy:{pos:[19,4], label:'휴대전화 위치 기록', rows:300, text:'산마루동 주민 312명의 이름 · 전화번호 · 실시간 위치', src:'통신사 원본 기록 (개인을 알아볼 수 있음)',
+      why:'개인을 알아볼 수 있는 위치 기록은 사생활 침해 위험이 큽니다. 꼭 필요하다면 개인을 알아볼 수 없게 처리한 통계(예: 시간대별 인구 수)를 써야 해요.'},
+    intro:[
+      {who:'시스템', text:'임무 1 · 집중호우\n오후 2시 · 시간당 40 mm가 넘는 비구름 접근 중'},
+      {who:'나래', text:'비구름과 함께 낙뢰가 떨어지고 있어요! 지금은 데이터가 없어서 번개가 어디에 칠지 전혀 예측할 수 없어요.'},
+      {who:'나래', text:'데이터가 150행 넘게 쌓이면 제가 낙뢰 위치를 예측해서 파란 원으로 알려 드릴게요. 데이터가 많을수록 더 많이, 더 일찍 맞힐 수 있어요. 파란 원이 보이면 돌진으로 피하거나 E로 보호막을 켜세요.'},
+      {who:'나래', text:'파란 관측소 위에 잠시 머물면 강우량계 데이터를 내려받아요. 3시간 누적 강수량을 모아 오면, 어느 구역에 호우 경보를 보낼지 같이 판단해요. 출발!'},
+    ],
+    q2:{q:'강수량이 경보 기준을 넘은 두 구역의 공통점으로 가장 알맞은 것은?', opts:['하천 옆 저지대와 산비탈처럼 물이 모이거나 흙이 무너지기 쉬운 곳이다','바다와 가장 가까운 곳이다','건물이 가장 많은 도심이다'], a:0,
+      ok:'맞아요! 데이터는 "어디가" 위험한지 알려 주고, 지형 지식은 "왜" 위험한지 설명해 줘요. 교과서의 도시 침수 예보도 강수량 데이터와 지형 정보를 함께 써요.', no:'그래프에서 빨간 막대가 어느 구역인지, 그 구역이 어떤 곳인지 떠올려 보세요.'},
+    concept:{title:'데이터 → 정보 → 지식', body:'각 지점의 강수량(데이터)을 구역별로 정리해 그래프로 나타내면 정보가 되고, 이를 바탕으로 침수 예보 같은 대책(지식)을 세웁니다. 기상 위성과 관측소에서 모은 빅데이터를 분석하면 기상 현상의 패턴을 찾아 예측 정확도를 높이고 재해 예방 대책을 세울 수 있어요.'},
+    think:'산마루동 강우량계 하나가 -999를 보냈습니다. 이 값을 그대로 평균에 넣었다면 산마루동의 평균 강수량은 어떻게 되고, 어떤 판단을 내리게 됐을까요?'
+  },
+  {
+    key:'dust', short:'미세먼지', title:'임무 2 · 미세먼지', sensor:'미세먼지 측정기',
+    metric:'최근 2시간 평균 PM10 농도', unit:'µg/m³', digits:0, threshold:150, sd:48,
+    rule:'PM10 시간 평균 150 µg/m³ 이상이 2시간 넘게 지속 → 미세먼지 주의보', alert:'dust', timeName:'황사 띠 통과까지',
+    values:{sky:[52,60], hill:[78,9999], river:[188,180], sea:[176,170]},
+    hazard:{cloud:{n:4, dps:11}},
+    rumor:'"산마루동 공장에서 유독가스 나온대. 엄마 친구가 그러던데?"',
+    privacy:{pos:[15,12], label:'CCTV 원본 영상', rows:300, text:'바다동 해안 산책로 CCTV 3시간 분량 (행인 얼굴이 그대로 보임)', src:'구청 CCTV 서버 원본',
+      why:'얼굴이 드러난 영상은 개인을 알아볼 수 있는 비정형 데이터라 사생활 침해 위험이 큽니다. 미세먼지 판단에는 측정기 수치(정형 데이터)로 충분해요.'},
+    intro:[
+      {who:'시스템', text:'임무 2 · 미세먼지\n황사와 미세먼지가 겹친 봄날'},
+      {who:'나래', text:'서쪽에서 미세먼지 덩어리가 바람을 타고 들어와요. 그런데 미세먼지는 눈으로 잘 안 보여요! 지금 화면에서도 아주 흐릿하게만 보일 거예요. 그 안에 있으면 체력이 계속 줄어요.'},
+      {who:'나래', text:'데이터가 150행 넘게 쌓이면 제가 농도 지도를 그려서 먼지 덩어리를 또렷하게 보여 드릴게요. 정확도가 더 오르면 3초 뒤 이동 위치도 점선으로 예측해요.'},
+      {who:'나래', text:'에어코리아처럼 실시간으로 측정되는 미세먼지 농도를 모아, 대원들을 실내로 보내야 할 구역을 정해요.'},
+    ],
+    q2:{q:'미세먼지 농도가 높은 구역과 먼지 구름이 지나간 길을 비교하면?', opts:['먼지 구름이 자주 지나간 남쪽 구역과 겹친다','전혀 관계가 없다','먼지 구름이 지나간 곳이 오히려 낮다'], a:0,
+      ok:'정답! 드론이 직접 겪은 현상과 측정 데이터가 같은 방향을 가리켜요. 서로 다른 데이터가 같은 결론을 가리킬수록 판단을 더 믿을 수 있어요.', no:'게임에서 먼지 구름이 주로 지나간 곳을 떠올리며 그래프를 다시 보세요.'},
+    concept:{title:'국가가 제공하는 실시간 생활 데이터', body:'에어코리아에서는 미세먼지와 오존 농도를, 국립해양조사원에서는 해수면 높이를 실시간으로 확인할 수 있어요. 교과서 탐구처럼 디지털 탐구 도구로 교실·운동장·체육관의 미세먼지를 직접 재 보면(예: 35, 50, 40 µg/m³) 환기를 할지, 야외 활동을 줄일지 판단하는 근거가 됩니다.'},
+    think:'우리 교실에서 디지털 탐구 도구로 잰 미세먼지 농도가 에어코리아에서 발표한 우리 동네 값과 크게 다르다면, 그 까닭은 무엇일까요? 어느 데이터를 믿고 어떻게 행동해야 할까요?'
+  },
+  {
+    key:'heat', short:'폭염', title:'임무 3 · 폭염', sensor:'체감온도 관측기',
+    metric:'오늘 최고 체감온도', unit:'℃', digits:1, threshold:35, sd:2.6,
+    rule:'최고 체감온도 35 ℃ 이상이 이틀 넘게 지속될 전망 → 폭염 경보', alert:'heat', timeName:'한낮 최고 기온까지',
+    values:{sky:[37.4,36.8], hill:[31.2,null], river:[32.6,33.2], sea:[30.4,31.0]},
+    hazard:{sun:{dps:3.6, heal:7}, strike:{every:3, dmg:12, r:46, name:'아스팔트 열기'}},
+    rumor:'"오늘 하늘동 체감온도 50도 넘었음 ㄷㄷ 계란 익는 중"',
+    privacy:{pos:[3,13], label:'스마트워치 건강 기록', rows:300, text:'강변동 주민 85명의 이름과 심박수 · 수면 패턴', src:'건강 앱 서버 (동의 범위 확인 안 됨)',
+      why:'스마트워치로 심박수·수면 패턴을 재면 건강 상태를 확인할 수 있지만, 이름이 붙은 건강 기록은 매우 민감한 개인정보예요. 동의 없이 모으면 사생활 침해가 됩니다.'},
+    intro:[
+      {who:'시스템', text:'임무 3 · 폭염\n8월 한낮 · 대원들이 야외에서 시설 점검 중'},
+      {who:'나래', text:'햇볕 아래에 있으면 드론이 과열돼서 체력이 계속 줄어요. 초록 그늘 원 안에 들어가면 식으면서 회복돼요.'},
+      {who:'나래', text:'달궈진 아스팔트에서 갑자기 뜨거운 열기가 솟구치기도 해요. 데이터가 쌓이면 이것도 파란 원으로 예측해 드릴게요.'},
+      {who:'나래', text:'같은 도시라도 건물이 빽빽한 곳과 바닷가는 더위가 달라요. 체감온도 데이터를 모아 폭염 위험 구역에만 경보를 보내요. 불필요한 경보도 줄여야 해요!'},
+    ],
+    q2:{q:'체감온도가 가장 높은 하늘동은 어떤 곳일까요?', opts:['건물과 아스팔트가 빽빽한 도심 (도시 열섬)','바다와 가장 가까운 곳','숲이 가장 많은 곳'], a:0,
+      ok:'맞아요! 건물과 포장도로가 열을 머금는 도심은 주변보다 더 뜨거워져요(도시 열섬). 관측 지점이 촘촘한 빅데이터가 있어야 이런 차이를 찾아낼 수 있어요.', no:'게임 지도에서 하늘동에 무엇이 많았는지 떠올려 보세요.'},
+    concept:{title:'데이터가 많을수록 판단이 정확해진다', body:'과학 실험에서 데이터의 양이 많을수록 결과의 신뢰도가 높아지고, 양이 적으면 편향된 결과를 얻을 수 있어요. 서울 열린데이터 광장처럼 도시 곳곳의 날씨·인구 혼잡도·교통 데이터를 실시간으로 모으면 더위 쉼터 운영 같은 대책을 세울 수 있습니다.'},
+    think:'스마트워치 건강 데이터는 폭염 피해를 줄이는 데 도움이 될 수도 있습니다. 사생활을 지키면서 활용하려면 어떤 조건이 필요할까요?'
+  },
+];
+
+const STORY = {
+  opening:[
+    {who:'시스템', text:'{date} · 가람시 재난안전 데이터센터'},
+    {who:'나래', text:'{name} 대원님, 큰일이에요. 오늘 가람시에 재난이 연달아 예보됐어요. 집중호우, 미세먼지, 그리고 폭염까지요.'},
+    {who:'나', text:'현장에 나간 대원들은?'},
+    {who:'나래', text:'하람, 도윤, 서아, 지호 대원이 네 구역에 흩어져 있어요. 그런데 통신망이 불안정해서 관측소 데이터가 센터로 들어오지 않아요.'},
+    {who:'나래', text:'대원님이 데이터 드론을 조종해서 관측소 8곳의 데이터를 직접 내려받아 주세요. 드론 센서도 지나가는 곳의 데이터를 계속 기록해요.'},
+    {who:'나래', text:'조심하세요. 보라색 "가짜 뉴스 봇"이 검증되지 않은 소문을 뿌리고 다녀요. 닿으면 우리 데이터가 오염돼요. 돌진으로 부숴 버리세요!'},
+    {who:'나', text:'좋아. 데이터 드론, 출동!'},
+  ],
+  vote:{
+    q:'다음 재난에 대비하려면 주민들의 휴대전화 위치 데이터를 쓰면 대피 경로를 훨씬 잘 짤 수 있어요. 하지만 위치 기록은 그 사람이 어디에 사는지, 어디에 다니는지까지 알려 주는 민감한 개인정보예요. 대원님의 선택은?',
+    opts:[
+      {t:'개인을 알아볼 수 없게 처리하고(익명화), 동의한 주민의 데이터만 시간대별 인구 수 통계로 쓴다', r:'익명화와 동의를 선택했어요. 준비는 조금 느렸지만, 주민들이 안심하고 데이터 제공에 동의해서 오히려 더 많은 데이터가 모였어요.'},
+      {t:'재난은 급하니 모든 주민의 실시간 위치를 동의 없이 바로 모은다', r:'모든 위치를 모았어요. 대피 계획은 빨라졌지만, 위치 기록이 새어 나가 특정인의 동선이 드러나는 사생활 침해 사고가 생겼어요.'},
+      {t:'개인정보가 더 중요하니 위치 데이터는 전혀 쓰지 않는다', r:'쓰지 않았어요. 개인정보는 지켰지만, 다음 재난 때 어느 곳에 사람이 몰려 있는지 몰라 대피 안내가 늦어질 수 있어요.'},
+    ]
+  }
+};
+
+/* ===================== 지도 ===================== */
+function district(x,y){ return y < 7 ? (x < 12 ? 'sky' : 'hill') : (x < 12 ? 'river' : 'sea'); }
+function isSea(x,y){ return (x >= 20 && y >= 7) || (y >= 13 && x >= 15); }
+function isRoad(x,y){ if (isSea(x,y)) return false; return (y===3&&x<20)||(y===7&&x<20)||(y===12&&x<20)||x===11||(x===4&&y>=7)||(x===17&&y<=12); }
+function isRiver(x,y){ return (y===9||y===10) && x<20; }
+function isHQ(x,y){ return (x===12||x===13)&&(y===5||y===6); }
+const HOUSES = new Set(['2,14','5,14','8,14','13,8','15,8','19,11']);
+function isBuilding(x,y){ if (isRoad(x,y)||isHQ(x,y)) return false; if (HOUSES.has(x+','+y)) return true; return district(x,y)==='sky' && x%3===1 && y%3===1; }
+function walkTile(x,y){ if (x<0||y<0||x>=COLS||y>=ROWS) return false; if (isSea(x,y)||isBuilding(x,y)) return false; if (isRiver(x,y)&&!isRoad(x,y)) return false; return true; }
+function walkPx(px,py){ return walkTile(Math.floor(px/T), Math.floor(py/T)); }
+const SHADE = [[2,5],[9,2],[15,1],[22,3],[1,8],[9,11],[13,12],[18,11],[6,6],[20,5]].map(([x,y])=>({x:x*T+T/2,y:y*T+T/2,r:44}));
+
+const GRASS = {sky:'#86a870', hill:'#729c58', river:'#8db277', sea:'#b5af86'};
+function drawStaticMap(){
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  for (let y=0;y<ROWS;y++) for (let x=0;x<COLS;x++){
+    const px=x*T, py=y*T;
+    if (isSea(x,y)){ g.fillStyle='#2c6a94'; g.fillRect(px,py,T,T); g.strokeStyle='rgba(255,255,255,.16)'; g.beginPath(); g.moveTo(px+8,py+16); g.quadraticCurveTo(px+16,py+10,px+24,py+16); g.stroke(); continue; }
+    g.fillStyle=GRASS[district(x,y)]; g.fillRect(px,py,T,T);
+    if ((x*7+y*13)%5===0){ g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(px+10,py+12,4,4); }
+    if (isRiver(x,y)){
+      g.fillStyle='#4790bf'; g.fillRect(px,py,T,T);
+      g.strokeStyle='rgba(255,255,255,.2)'; g.beginPath(); g.moveTo(px+5,py+20); g.quadraticCurveTo(px+13,py+14,px+21,py+20); g.stroke();
+      if (isRoad(x,y)){ g.fillStyle='#b8a98a'; g.fillRect(px+4,py,T-8,T); g.fillStyle='#8a7a5f'; g.fillRect(px+4,py,3,T); g.fillRect(px+T-7,py,3,T); }
+      continue;
+    }
+    if (isRoad(x,y)){ g.fillStyle='#d6cdb4'; g.fillRect(px,py,T,T); g.fillStyle='rgba(0,0,0,.08)'; g.fillRect(px,py+T-2,T,2); }
+    if (district(x,y)==='hill'&&!isRoad(x,y)&&!isHQ(x,y)&&x%4===2&&y%3===0){
+      g.fillStyle='#4f7a3a'; g.beginPath(); g.moveTo(px+5,py+35); g.lineTo(px+20,py+7); g.lineTo(px+35,py+35); g.fill();
+      g.fillStyle='#e8efe1'; g.beginPath(); g.moveTo(px+15,py+16); g.lineTo(px+20,py+7); g.lineTo(px+25,py+16); g.fill();
+    }
+    if (isBuilding(x,y)){
+      const tall=district(x,y)==='sky';
+      g.fillStyle='rgba(0,0,0,.22)'; g.fillRect(px+7,py+7,T-8,T-8);
+      g.fillStyle=tall?'#5a6880':'#a7795a'; g.fillRect(px+4,py+4,T-8,T-8);
+      g.fillStyle=tall?'#7a89a2':'#c9563f'; g.fillRect(px+4,py+4,T-8,9);
+      g.fillStyle='rgba(255,240,180,.75)';
+      if (tall){ for (let i=0;i<3;i++) for (let j=0;j<2;j++) g.fillRect(px+9+i*8,py+18+j*8,4,4); } else g.fillRect(px+16,py+22,8,10);
+    }
+  }
+  for (const s of SHADE){ // 가로수
+    g.fillStyle='rgba(0,0,0,.18)'; g.beginPath(); g.arc(s.x+4,s.y+5,15,0,7); g.fill();
+    g.fillStyle='#3d6b30'; g.beginPath(); g.arc(s.x,s.y,15,0,7); g.fill();
+    g.fillStyle='#4f8a3d'; g.beginPath(); g.arc(s.x-4,s.y-4,9,0,7); g.fill();
+  }
+  // 분석 센터
+  const hx=12*T, hy=5*T;
+  g.fillStyle='#24344f'; g.fillRect(hx+3,hy+3,2*T-6,2*T-6);
+  g.fillStyle='#ffb020'; g.fillRect(hx+3,hy+3,2*T-6,9);
+  g.strokeStyle='#ffb020'; g.lineWidth=3; g.beginPath(); g.arc(hx+T,hy+38,12,Math.PI,0); g.stroke();
+  g.beginPath(); g.moveTo(hx+T,hy+38); g.lineTo(hx+T+8,hy+22); g.stroke();
+  g.fillStyle='#ffb020'; g.font='bold 13px "IBM Plex Sans KR", sans-serif'; g.textAlign='center'; g.fillText('분석 센터',hx+T,hy+2*T-12);
+  g.font='22px "Do Hyeon", sans-serif'; g.textAlign='left';
+  for (const [t,lx,ly] of [['하늘동',10,28],['산마루동',18*T+8,28],['강변동',10,8*T+28],['바다동',14*T+10,8*T+28]]){
+    g.fillStyle='rgba(11,22,38,.55)'; const w=g.measureText(t).width+14; g.fillRect(lx-7,ly-20,w,28); g.fillStyle='#fff'; g.fillText(t,lx,ly);
+  }
+  return c;
+}
+
+/* ===================== 공통 ===================== */
+const $ = s => document.querySelector(s);
+const rnd = (a,b)=>a+Math.random()*(b-a);
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function gauss(){ let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (v,m)=> v===null||v===undefined||Number.isNaN(v) ? '—' : Number(v).toFixed(m.digits);
+const today = new Date();
+const S = {name:'새내기', m:0, total:null, lives:3, seenOpening:false};
+function resetTotal(){ S.total={rescued:0, crew:0, falseAlarm:0, rows:0, sensors:0, botsBroken:0, rumorRows:0, privTaken:0, privBlocked:0, cleanMiss:0, lost:0, log:[], notes:{}}; S.lives=3; }
+resetTotal();
+function show(id){ for (const s of ['title','game','analysis','result','final']) $('#sc-'+s).hidden = s!==id; scrollTo({top:0}); }
+// 개별 측정값은 시간·장소에 따라 크게 흔들립니다 (평균은 데이터가 많을수록 참값에 가까워짐)
+function noisy(m,base,k){ const v=base+gauss()*m.sd*k; return m.key==='heat' ? +v.toFixed(1) : Math.max(0,Math.round(v)); }
+function truthMean(m,d){ const v=m.values[d].filter(x=>x!==null&&x!==-999&&x!==9999); return v.reduce((a,b)=>a+b,0)/v.length; }
+
+/* ===================== 대사 ===================== */
+let DLG = null;
+function dialog(lines, done){
+  DLG = {lines, i:0, shown:0, done}; $('#dialog').hidden=false; nextLine(true);
+}
+function nextLine(first){
+  const L = DLG.lines[DLG.i];
+  if (!first && DLG.shown < L.text.length){ DLG.shown = 1e9; return; }
+  if (!first){ DLG.i++; if (DLG.i>=DLG.lines.length){ $('#dialog').hidden=true; const d=DLG.done; DLG=null; d&&d(); return; } }
+  DLG.shown = 0;
+  const cur = DLG.lines[DLG.i];
+  cur.text = cur.text.replace('{name}', S.name).replace('{date}', `${today.getFullYear()}년 ${today.getMonth()+1}월 ${today.getDate()}일`);
+  const who = $('#d-who'); who.textContent = cur.who==='나' ? S.name+' 대원' : cur.who==='나래' ? '나래 (AI 파트너)' : cur.who;
+  who.className = 'who ' + (cur.who==='나래'?'ai':cur.who==='나'?'me':'');
+}
+function tickDialog(dt){
+  if (!DLG) return;
+  const L = DLG.lines[DLG.i]; DLG.shown = Math.min(L.text.length, DLG.shown + dt*45);
+  $('#d-txt').textContent = L.text.slice(0, Math.floor(DLG.shown));
+}
+$('#dialog').addEventListener('click', ()=>DLG && nextLine(false));
+$('#d-skip').addEventListener('click', e=>{ e.stopPropagation(); if (!DLG) return; $('#dialog').hidden=true; const d=DLG.done; DLG=null; d&&d(); });
+function showHelp(){
+  if (!G || G.phase==='done' || G.phase==='over' || !$('#modal').hidden) return;
+  const prev=G.phase; G.phase='pause'; keys.clear(); joy.on=false;
+  modal(`<h3>조작법 (일시정지)</h3>
+    <div style="display:grid;gap:6px">
+      <span><kbd>WASD</kbd> / <kbd>방향키</kbd> 드론 이동 · 휴대폰은 화면을 끌어서 이동</span>
+      <span><kbd>Space</kbd> / <kbd>Shift</kbd> 돌진: 위험 피하기, 가짜 뉴스 봇 부수기</span>
+      <span><kbd>E</kbd> 누르고 있기: 보호막 (피해 75% 감소, 느려짐)</span>
+      <span><b style="color:var(--data)">파란 기둥</b> 관측소 위에 잠시 머물면 데이터 내려받기</span>
+      <span><b style="color:var(--data)">파란 원</b> AI가 예측한 위험 위치 (데이터가 150행 넘으면 켜짐)</span>
+      <span><b style="color:var(--signal)">분석 센터</b>에 들어가면 임무 종료 · 분석 시작</span>
+      <span>드론은 3대. 3대를 모두 잃으면 임무 1부터 다시 시작해요.</span>
+    </div>`, [{label:'계속하기', onClick:()=>{ G.phase = prev==='pause' ? 'play' : prev; }}]);
+}
+$('#btn-help').addEventListener('click', showHelp);
+
+/* ===================== 모달 (게임 안) ===================== */
+function modal(html, buttons){
+  const card=$('#modal-card'); card.innerHTML=html;
+  const row=document.createElement('div'); row.className='row';
+  buttons.forEach((b,i)=>{ const el=document.createElement('button'); el.className='btn '+(b.cls||''); el.textContent=b.label;
+    el.onclick=()=>{ $('#modal').hidden=true; b.onClick&&b.onClick(); }; row.appendChild(el); if(!i) setTimeout(()=>el.focus(),30); });
+  card.appendChild(row); $('#modal').hidden=false;
+}
+let toastT=0;
+function toast(msg, ms=2200){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, ms); }
+
+/* ===================== 게임 상태 ===================== */
+let G = null, BG = null;
+const cv=$('#cv'), ctx=cv.getContext('2d');
+function startMission(){
+  const m = MISSIONS[S.m];
+  const sensors=[]; for (const d of DIST) SENSOR_POS[d.id].forEach((p,i)=>sensors.push({d:d.id,i,x:p[0]*T+T/2,y:p[1]*T+T/2,v:m.values[d.id][i],prog:0,got:false}));
+  G = {
+    m, phase:'dialog', t:0, time:100, maxTime:100,
+    p:{x:12.5*T, y:7.6*T, hp:100, face:0, dash:0, dashCd:0, dvx:0, dvy:0, shield:false, hurt:0, inv:0, trail:[]},
+    sensors, bots:[], strikes:[], clouds:[], fx:[], rows:[], passiveT:0, botT:4, strikeT:2.5, path:[], pathT:0, lost:0,
+    privacy:{...m.privacy, x:m.privacy.pos[0]*T+T/2, y:m.privacy.pos[1]*T+T/2, done:false, taken:false},
+    botsBroken:0, rumorRows:0, recalls:0, inHQ:false, beamToast:false,
+  };
+  if (m.hazard.cloud) for (let i=0;i<m.hazard.cloud.n;i++) G.clouds.push({x:-40 - i*280, y: i===2 ? rnd(110,200) : rnd(370,530), rx:rnd(115,145), ry:rnd(68,88), vx:rnd(40,60)});
+  $('#h-mission').textContent = m.title;
+  show('game'); cv.focus();
+  const lines = (S.m===0 && !S.seenOpening ? STORY.opening : []).concat(m.intro).map(l=>({...l}));
+  S.seenOpening = true;
+  dialog(lines, ()=>{ G.phase='play'; toast('관측소 8곳의 데이터를 내려받고\n분석 센터로 돌아오세요'); });
+}
+
+/* 데이터 행 */
+function addRow(r){ r.t = +G.t.toFixed(1); G.rows.push(r); }
+function aiAcc(){
+  const n = G.rows.filter(r=>r.kind!=='rumor').length;
+  if (n < 150) return null;
+  return Math.max(30, Math.min(96, Math.round(50 + 46*(1-Math.exp(-(n-150)/700)) - G.rumorRows*4)));
+}
+
+/* ===================== 입력 ===================== */
+const keys=new Set();
+const KM={ArrowUp:'u',KeyW:'u',ArrowDown:'d',KeyS:'d',ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r'};
+addEventListener('keydown',e=>{
+  if ($('#sc-game').hidden) return;
+  if (e.code==='KeyH'){ showHelp(); return; }
+  if (DLG && (e.code==='Space'||e.code==='Enter')){ e.preventDefault(); if ($('#modal').hidden) nextLine(false); return; }
+  if (!$('#modal').hidden) return;
+  if (KM[e.code]){ keys.add(KM[e.code]); e.preventDefault(); }
+  if (e.code==='Space'||e.code==='ShiftLeft'||e.code==='ShiftRight'){ e.preventDefault(); doDash(); }
+  if (e.code==='KeyE') keys.add('shield');
+});
+addEventListener('keyup',e=>{ if (KM[e.code]) keys.delete(KM[e.code]); if (e.code==='KeyE') keys.delete('shield'); });
+const joy={on:false,id:null,ox:0,oy:0,dx:0,dy:0};
+cv.addEventListener('pointerdown',e=>{
+  if (DLG){ nextLine(false); return; }
+  const r=cv.getBoundingClientRect(); joy.on=true; joy.id=e.pointerId; joy.ox=(e.clientX-r.left)/r.width*W; joy.oy=(e.clientY-r.top)/r.height*H; joy.dx=joy.dy=0;
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',e=>{
+  if (!joy.on||e.pointerId!==joy.id) return;
+  const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*W, y=(e.clientY-r.top)/r.height*H;
+  let dx=x-joy.ox, dy=y-joy.oy; const L=Math.hypot(dx,dy), max=60; if (L>max){ dx*=max/L; dy*=max/L; } joy.dx=dx/max; joy.dy=dy/max;
+});
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,e=>{ if (e.pointerId===joy.id){ joy.on=false; joy.dx=joy.dy=0; } }));
+$('#t-dash').addEventListener('pointerdown',e=>{ e.preventDefault(); doDash(); });
+$('#t-shield').addEventListener('pointerdown',e=>{ e.preventDefault(); keys.add('shield'); });
+['pointerup','pointerleave','pointercancel'].forEach(ev=>$('#t-shield').addEventListener(ev,()=>keys.delete('shield')));
+function doDash(){
+  if (!G||G.phase!=='play'||G.p.dashCd>0) return;
+  const P=G.p; let dx=Math.cos(P.face), dy=Math.sin(P.face);
+  P.dash=.2; P.dashCd=1.0; P.dvx=dx; P.dvy=dy;
+}
+
+/* ===================== 갱신 ===================== */
+function move(P,dx,dy){
+  const r=12;
+  const ok=(x,y)=>walkPx(x-r,y-r)&&walkPx(x+r,y-r)&&walkPx(x-r,y+r)&&walkPx(x+r,y+r);
+  if (ok(P.x+dx,P.y)) P.x+=dx;
+  if (ok(P.x,P.y+dy)) P.y+=dy;
+}
+// 모든 피해는 이 함수로만 줍니다 (돌진 중·부활 직후 무적)
+function hurt(dmg){
+  const P=G.p; if (P.dash>0 || P.inv>0 || P.hp<=0) return;
+  if (P.shield) dmg*=.25;
+  P.hp=Math.max(0,P.hp-dmg); P.hurt=.25;
+}
+function loseLife(){
+  const P=G.p; S.lives--; G.lost++; S.total.lost++; keys.clear(); joy.on=false;
+  G.fx.push({kind:'pop',x:P.x,y:P.y,t:0});
+  if (S.lives>0){
+    P.hp=100; P.x=12.5*T; P.y=7.6*T; P.inv=2.5; P.trail=[];
+    G.bots=[]; G.strikes=[];
+    toast(`드론이 파손됐어요! 남은 드론 ${S.lives}대\n분석 센터에서 예비 드론이 출동합니다. (모은 데이터는 그대로)`, 3000);
+    return;
+  }
+  G.phase='over';
+  modal(`<h3 style="color:var(--alert)">드론 3대를 모두 잃었어요</h3>
+    <p>재난 데이터센터의 예비 드론이 바닥났어요. 처음 임무부터 다시 도전해요.</p>
+    <p class="muted">팁: 데이터가 150행을 넘으면 AI가 위험을 파란 원으로 예측해요. 관측소 데이터부터 빨리 모으고, 위험할 땐 그늘·보호막을 쓰세요.</p>`,
+    [{label:'임무 1부터 다시', onClick:()=>{ S.m=0; resetTotal(); startMission(); }}]);
+}
+function update(dt){
+  const m=G.m, P=G.p; G.t+=dt;
+  // 이동
+  let ix=0, iy=0;
+  if (keys.has('u')) iy-=1; if (keys.has('d')) iy+=1; if (keys.has('l')) ix-=1; if (keys.has('r')) ix+=1;
+  if (joy.on){ ix+=joy.dx; iy+=joy.dy; }
+  const L=Math.hypot(ix,iy); if (L>1){ ix/=L; iy/=L; }
+  P.shield = keys.has('shield');
+  const spd = (P.shield?95:175)*dt;
+  if (L>.1){ P.face=Math.atan2(iy,ix); }
+  if (P.dash>0){ P.dash-=dt; move(P,P.dvx*470*dt,P.dvy*470*dt); P.trail.push({x:P.x,y:P.y,a:.6}); }
+  else move(P,ix*spd,iy*spd);
+  P.dashCd=Math.max(0,P.dashCd-dt); P.hurt=Math.max(0,P.hurt-dt); P.inv=Math.max(0,P.inv-dt);
+  G.pathT-=dt; if (G.pathT<=0){ G.pathT=.3; G.path.push([P.x,P.y]); }
+  P.trail.forEach(t=>t.a-=dt*2.5); P.trail=P.trail.filter(t=>t.a>0);
+
+  // 드론 센서: 이동하며 주변 데이터 기록
+  G.passiveT-=dt;
+  if (G.passiveT<=0){
+    G.passiveT=.35;
+    const d=district(Math.floor(P.x/T),Math.floor(P.y/T));
+    addRow({kind:'drone', d, v:noisy(m,truthMean(m,d),1), src:'drone'});
+  }
+  // 관측소
+  for (const s of G.sensors){
+    if (s.got) continue;
+    const near=Math.hypot(P.x-s.x,P.y-s.y)<30;
+    s.prog = near ? s.prog+dt/1.1 : Math.max(0,s.prog-dt*.6);
+    if (s.prog>=1){
+      s.got=true;
+      for (let k=0;k<40;k++){
+        const v = (s.v===null||s.v===-999||s.v===9999) ? s.v : noisy(m,s.v,.7);
+        addRow({kind:'sensor', d:s.d, v, src:`s:${s.d}-${s.i}`});
+      }
+      const vtxt = s.v===null?'값 없음 (결측)':fmt(s.v,m)+' '+m.unit;
+      toast(`${m.sensor} ${DNAME[s.d]}-${s.i+1} 데이터 수신 · +40행\n${m.metric}: ${vtxt}`);
+    }
+  }
+  // 개인정보 자료
+  const pv=G.privacy;
+  if (!pv.done && Math.hypot(P.x-pv.x,P.y-pv.y)<26){ pv.done=true; keys.clear(); joy.on=false; privacyChoice(); return; }
+  // 가짜 뉴스 봇
+  G.botT-=dt;
+  if (G.botT<=0 && G.bots.length<3){
+    G.botT=rnd(6,9);
+    const side=Math.floor(Math.random()*4);
+    const pos = side===0?[rnd(0,W),-20]:side===1?[W+20,rnd(0,H)]:side===2?[rnd(0,W),H+20]:[-20,rnd(0,H)];
+    G.bots.push({x:pos[0],y:pos[1],w:rnd(0,6)});
+  }
+  for (const b of G.bots){
+    const dx=P.x-b.x, dy=P.y-b.y, dd=Math.hypot(dx,dy)||1; b.w+=dt;
+    const sp = 72 + Math.min(40, G.t*.25);
+    b.x+=dx/dd*sp*dt + Math.cos(b.w*2)*20*dt; b.y+=dy/dd*sp*dt + Math.sin(b.w*2.4)*20*dt;
+    if (dd<24){
+      b.dead=true;
+      if (P.dash>0){ G.botsBroken++; G.fx.push({kind:'pop',x:b.x,y:b.y,t:0}); toast('가짜 뉴스 봇 차단! 검증되지 않은 정보를 막았어요.'); }
+      else {
+        G.rumorRows++; addRow({kind:'rumor', d:null, v:null, src:'rumor'}); hurt(6);
+        G.fx.push({kind:'pop',x:b.x,y:b.y,t:0,c:'#b98cff'});
+        toast('검증되지 않은 소문이 데이터에 섞였어요!\nAI 예측 정확도가 떨어져요. (돌진으로 부술 수 있어요)', 2600);
+      }
+    }
+  }
+  G.bots=G.bots.filter(b=>!b.dead);
+  // 위험 요소
+  const acc=aiAcc();
+  const hz=m.hazard;
+  if (hz.strike){
+    G.strikeT-=dt;
+    if (G.strikeT<=0){
+      G.strikeT=hz.strike.every*rnd(.8,1.2);
+      const near=Math.random()<.55;
+      const x = near ? P.x+rnd(-90,90) : rnd(40,W-40), y = near ? P.y+rnd(-90,90) : rnd(40,H-40);
+      // 예고는 오직 AI 예측으로만: 정확도만큼의 확률로 맞히고, 정확도가 높을수록 더 일찍 알려 줌
+      const ai = !!acc && Math.random()*100 < acc;
+      const tele = ai ? .7 + (acc-50)/46*.9 : .9;
+      G.strikes.push({x,y,t:0,tele,ai});
+    }
+    for (const s of G.strikes){
+      s.t+=dt;
+      if (s.t>=s.tele && !s.hit){
+        s.hit=true; G.fx.push({kind:'bolt',x:s.x,y:s.y,t:0});
+        if (Math.hypot(P.x-s.x,P.y-s.y)<hz.strike.r) hurt(hz.strike.dmg);
+      }
+    }
+    G.strikes=G.strikes.filter(s=>!s.hit);
+  }
+  if (hz.cloud){
+    for (const c of G.clouds){
+      c.x+=c.vx*dt; if (c.x-c.rx>W){ c.x=-c.rx-rnd(40,200); c.y=Math.random()<.7?rnd(380,540):rnd(110,220); }
+      const nx=(P.x-c.x)/c.rx, ny=(P.y-c.y)/c.ry;
+      if (nx*nx+ny*ny<1) hurt(hz.cloud.dps*dt);
+    }
+  }
+  G.inShade=false;
+  if (hz.sun){
+    G.inShade = SHADE.some(s=>Math.hypot(P.x-s.x,P.y-s.y)<s.r) || district(Math.floor(P.x/T),Math.floor(P.y/T))==='never';
+    if (G.inShade) P.hp=Math.min(100,P.hp+hz.sun.heal*dt); else hurt(hz.sun.dps*dt*(P.shield?2:1)); // 보호막(양산)은 hurt에서 75% 감소
+  }
+  G.fx.forEach(f=>f.t+=dt); G.fx=G.fx.filter(f=>f.t<.5);
+  if (P.hp<=0){ loseLife(); return; }
+  // 분석 센터
+  const tx=Math.floor(P.x/T), ty=Math.floor(P.y/T), inHQ=isHQ(tx,ty);
+  const got=G.sensors.filter(s=>s.got).length;
+  if (got===8 && !G.beamToast){ G.beamToast=true; toast('관측소 8곳 완료! 노란 빛기둥, 분석 센터로 돌아오세요.', 2600); }
+  if (inHQ && !G.inHQ){ G.inHQ=true; if (got) askFinish(); else toast('아직 내려받은 관측소 데이터가 없어요.'); }
+  if (!inHQ) G.inHQ=false;
+  // 시간
+  G.time-=dt;
+  if (G.time<=0){ G.phase='pause'; modal(`<h3>시간 종료</h3><p>${m.short} 위험이 닥쳤어요. 지금까지 모은 데이터 <b class="mono">${G.rows.length}</b>행을 분석 센터로 원격 전송합니다.</p>`,[{label:'분석 시작',onClick:endPlay}]); }
+}
+function askFinish(){
+  const got=G.sensors.filter(s=>s.got).length; G.phase='pause'; keys.clear(); joy.on=false;
+  modal(`<h3>분석 센터 도착</h3><p>관측소 <b class="mono">${got}/8</b>곳 · 데이터 <b class="mono">${G.rows.length}</b>행을 모았어요. ${got<8?'관측소를 더 돌면 비어 있는 구역 없이 판단할 수 있어요.':'모든 관측소의 데이터를 모았어요!'}</p>`,
+    got<8 ? [{label:'더 수집하기',cls:'ghost',onClick:()=>G.phase='play'},{label:'분석 시작',onClick:endPlay}] : [{label:'분석 시작',onClick:endPlay}]);
+}
+function privacyChoice(){
+  const pv=G.privacy; G.phase='pause';
+  modal(`<p class="eyebrow" style="color:var(--alert)">개인정보 포함</p><h3>대량 데이터 발견! +${pv.rows}행</h3>
+    <div class="item privacy"><b>${pv.label}</b><span>${pv.text}</span><span class="src">출처: ${pv.src}</span></div>
+    <p class="muted">수집하면 데이터 행 수가 크게 늘어 AI 예측 정확도가 올라가요. 수집할까요?</p>`,
+  [
+    {label:'수집하지 않는다', onClick:()=>{ S.total.privBlocked++; modal(`<h3 style="color:var(--ok)">개인정보를 지켰어요</h3><p>${pv.why}</p>`,[{label:'계속',onClick:()=>G.phase='play'}]); }},
+    {label:'수집한다', cls:'ghost', onClick:()=>{
+      pv.taken=true; S.total.privTaken++;
+      for (let k=0;k<pv.rows;k++) addRow({kind:'privacy', d:null, v:null, src:'privacy'});
+      modal(`<h3 style="color:var(--alert)">사생활 침해 위험이 있는 데이터예요</h3><p>${pv.why}</p><p class="muted">AI 정확도는 올랐지만, 이 데이터는 분석 단계에서 직접 걸러 내야 해요.</p>`,[{label:'계속',onClick:()=>G.phase='play'}]);
+    }},
+  ]);
+}
+
+/* ===================== 그리기 ===================== */
+function drawSensor(s,t,key){
+  const {x,y}=s;
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x,y+14,13,5,0,0,7); ctx.fill();
+  if (!s.got){
+    const r=18+(reduceMotion?3:(Math.sin(t*4)+1)*4);
+    ctx.strokeStyle='rgba(92,200,255,.65)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.stroke();
+  }
+  ctx.globalAlpha=s.got?.5:1;
+  ctx.fillStyle='#0e2036'; ctx.beginPath(); ctx.arc(x,y,13,0,7); ctx.fill();
+  ctx.strokeStyle='#5cc8ff'; ctx.lineWidth=2.5; ctx.stroke();
+  ctx.fillStyle='#5cc8ff'; ctx.strokeStyle='#5cc8ff';
+  if (key==='rain'){ ctx.fillRect(x-5,y-8,10,15); ctx.fillStyle='#0e2036'; ctx.fillRect(x-3,y-5,6,5); }
+  else if (key==='dust'){ ctx.lineWidth=2; for (let i=-1;i<=1;i++){ ctx.beginPath(); ctx.moveTo(x-6,y+i*5); ctx.lineTo(x+6,y+i*5); ctx.stroke(); } }
+  else { ctx.fillRect(x-2,y-9,4,11); ctx.beginPath(); ctx.arc(x,y+5,4.5,0,7); ctx.fill(); }
+  ctx.globalAlpha=1;
+  if (s.prog>0 && !s.got){ ctx.strokeStyle='#ffb020'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(x,y,20,-Math.PI/2,-Math.PI/2+s.prog*Math.PI*2); ctx.stroke(); }
+  if (s.got){ ctx.strokeStyle='#39d98a'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x+6,y-14); ctx.lineTo(x+11,y-9); ctx.lineTo(x+19,y-19); ctx.stroke(); }
+}
+function drawCrew(id,t){
+  const c=CREW[id], x=c.pos[0]*T+T/2, y=c.pos[1]*T+T/2;
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x,y+14,8,3.5,0,0,7); ctx.fill();
+  ctx.fillStyle=c.color; ctx.fillRect(x-6,y-2,12,14);
+  ctx.fillStyle='#f3d2b3'; ctx.beginPath(); ctx.arc(x,y-7,6,0,7); ctx.fill();
+  ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(x,y-9,6.5,Math.PI,0); ctx.fill();
+  ctx.font='bold 12px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center';
+  const w=ctx.measureText(c.name).width+10; ctx.fillStyle='rgba(11,22,38,.78)'; ctx.fillRect(x-w/2,y-34,w,17); ctx.fillStyle='#fff'; ctx.fillText(c.name,x,y-21);
+}
+function drawBot(b,t){
+  const P=G.p, close=Math.hypot(P.x-b.x,P.y-b.y)<130;
+  ctx.save(); ctx.translate(b.x,b.y);
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0,18,11,4,0,0,7); ctx.fill();
+  ctx.rotate(reduceMotion?0:t*2);
+  ctx.fillStyle='#8a5ce0';
+  for (let k=0;k<8;k++){ ctx.rotate(Math.PI/4); ctx.beginPath(); ctx.moveTo(-4,-10); ctx.lineTo(0,-18); ctx.lineTo(4,-10); ctx.fill(); }
+  ctx.restore();
+  ctx.fillStyle='#b98cff'; ctx.beginPath(); ctx.arc(b.x,b.y,12,0,7); ctx.fill();
+  ctx.fillStyle='#24113f'; ctx.font='bold 15px sans-serif'; ctx.textAlign='center'; ctx.fillText('?',b.x,b.y+5);
+  if (close){ ctx.fillStyle='#ff5d4f'; ctx.font='bold 18px sans-serif'; ctx.fillText('!',b.x,b.y-22); }
+}
+function drawPrivacy(t){
+  const pv=G.privacy; if (pv.done) return;
+  const y=pv.y+(reduceMotion?0:Math.sin(t*3)*3);
+  ctx.fillStyle='rgba(255,93,79,.18)'; ctx.beginPath(); ctx.arc(pv.x,y,22,0,7); ctx.fill();
+  ctx.fillStyle='#ff5d4f'; ctx.fillRect(pv.x-10,y-3,20,15);
+  ctx.strokeStyle='#ff5d4f'; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(pv.x,y-4,6.5,Math.PI,0); ctx.stroke();
+  ctx.fillStyle='#2a0d0a'; ctx.fillRect(pv.x-1.5,y+2,3,6);
+  ctx.font='bold 11px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.fillText('+300행',pv.x,y-16);
+}
+function drawPlayer(t){
+  const P=G.p;
+  for (const tr of P.trail){ ctx.fillStyle=`rgba(255,176,32,${tr.a*.4})`; ctx.beginPath(); ctx.arc(tr.x,tr.y,10,0,7); ctx.fill(); }
+  ctx.fillStyle='rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(P.x,P.y+16,13,5,0,0,7); ctx.fill();
+  const bob=reduceMotion?0:Math.sin(t*6)*1.6;
+  ctx.save(); ctx.translate(P.x,P.y+bob);
+  if ((P.hurt>0 || P.inv>0) && Math.floor(t*20)%2) ctx.globalAlpha=.4;
+  ctx.strokeStyle='#eaf1fa'; ctx.lineWidth=2.5;
+  for (const [ax,ay] of [[-12,-12],[12,-12],[-12,12],[12,12]]){
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(ax,ay); ctx.stroke();
+    ctx.fillStyle='rgba(234,241,250,.35)'; ctx.beginPath(); ctx.arc(ax,ay,7,0,7); ctx.fill();
+  }
+  ctx.fillStyle='#ffb020'; ctx.beginPath(); ctx.arc(0,0,9,0,7); ctx.fill();
+  ctx.fillStyle='#0b1626'; ctx.beginPath(); ctx.arc(Math.cos(P.face)*4,Math.sin(P.face)*4,3,0,7); ctx.fill();
+  ctx.globalAlpha=1;
+  if (P.shield){ ctx.strokeStyle='rgba(92,200,255,.9)'; ctx.fillStyle='rgba(92,200,255,.18)'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(0,0,22,0,7); ctx.fill(); ctx.stroke(); }
+  ctx.restore();
+}
+let particles=[];
+function drawWeather(key,t,dt){
+  if (key==='rain'){ ctx.fillStyle='rgba(16,34,64,.2)'; ctx.fillRect(0,0,W,H); }
+  if (key==='heat'){ ctx.fillStyle='rgba(255,130,40,.10)'; ctx.fillRect(0,0,W,H);
+    const g=ctx.createRadialGradient(5*T,3*T,10,5*T,3*T,320); g.addColorStop(0,'rgba(255,90,40,.22)'); g.addColorStop(1,'rgba(255,90,40,0)'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+  if (key==='dust'){ ctx.fillStyle='rgba(170,135,80,.12)'; ctx.fillRect(0,0,W,H); }
+  if (reduceMotion || key!=='rain') return;
+  while (particles.length<130) particles.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()});
+  ctx.strokeStyle='rgba(200,225,255,.45)'; ctx.lineWidth=1;
+  for (const p of particles){ p.y+=(500+p.s*200)*dt; p.x-=70*dt; if (p.y>H){p.y=-10;p.x=Math.random()*W+60;} ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-3,p.y+12); ctx.stroke(); }
+}
+function render(t,dt){
+  if (!BG) BG=drawStaticMap();
+  ctx.drawImage(BG,0,0);
+  if (!G) return;
+  const m=G.m, acc=aiAcc();
+  // 그늘 (폭염)
+  if (m.hazard.sun) for (const s of SHADE){ ctx.strokeStyle='rgba(57,217,138,.7)'; ctx.setLineDash([5,4]); ctx.lineWidth=2; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle='rgba(20,60,30,.22)'; ctx.fill(); }
+  // 분석 센터 빛기둥
+  if (G.sensors.every(s=>s.got)){ const g=ctx.createLinearGradient(0,0,0,5*T+40); g.addColorStop(0,'rgba(255,176,32,0)'); g.addColorStop(1,'rgba(255,176,32,.5)'); ctx.fillStyle=g; ctx.fillRect(12*T+18,0,T*2-36,5*T+40); }
+  for (const s of G.sensors) drawSensor(s,t,m.key);
+  drawPrivacy(t);
+  for (const d of DIST) drawCrew(d.id,t);
+  // 낙뢰 예고
+  // 위험 예고는 AI가 예측한 것만 파란 원으로 보임
+  if (m.hazard.strike) for (const s of G.strikes){
+    if (!s.ai) continue;
+    const k=s.t/s.tele, r=m.hazard.strike.r;
+    ctx.fillStyle=`rgba(92,200,255,${.1+.22*k})`; ctx.beginPath(); ctx.arc(s.x,s.y,r,0,7); ctx.fill();
+    ctx.strokeStyle='#5cc8ff'; ctx.lineWidth=2.5; ctx.setLineDash([6,4]); ctx.beginPath(); ctx.arc(s.x,s.y,r,0,7); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.beginPath(); ctx.arc(s.x,s.y,r*k,0,7); ctx.stroke();
+    ctx.fillStyle='#5cc8ff'; ctx.font='bold 12px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center'; ctx.fillText('AI 예측',s.x,s.y-r-6);
+  }
+  drawPlayer(t);
+  for (const b of G.bots) drawBot(b,t);
+  // 먼지 구름
+  // 미세먼지는 눈에 잘 안 보임: AI 농도 지도가 켜져야 또렷해짐
+  if (m.hazard.cloud) for (const c of G.clouds){
+    const seen=!!acc;
+    if (acc && acc>=70){ ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(92,200,255,.85)'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#5cc8ff'; ctx.font='bold 12px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center'; ctx.fillText('3초 뒤 (AI 예측)',c.x+c.vx*3,c.y-c.ry-6); }
+    const g=ctx.createRadialGradient(c.x,c.y,10,c.x,c.y,c.rx);
+    if (seen){ g.addColorStop(0,'rgba(200,60,40,.5)'); g.addColorStop(.6,'rgba(230,150,40,.32)'); g.addColorStop(1,'rgba(230,150,40,0)'); }
+    else { g.addColorStop(0,'rgba(170,135,90,.2)'); g.addColorStop(1,'rgba(170,135,90,0)'); }
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx,c.ry,0,0,7); ctx.fill();
+    if (seen){ ctx.strokeStyle='rgba(255,170,60,.7)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx*.85,c.ry*.85,0,0,7); ctx.stroke();
+      ctx.fillStyle='#ffd2a0'; ctx.font='bold 12px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center'; ctx.fillText('PM10 고농도',c.x,c.y+4); }
+  }
+  for (const f of G.fx){
+    if (f.kind==='bolt'){ const a=1-f.t/.5; ctx.strokeStyle=`rgba(255,255,255,${a})`; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(f.x+10,f.y-300); ctx.lineTo(f.x-12,f.y-180); ctx.lineTo(f.x+8,f.y-90); ctx.lineTo(f.x-6,f.y); ctx.stroke();
+      ctx.fillStyle=`rgba(255,240,200,${a*.5})`; ctx.beginPath(); ctx.arc(f.x,f.y,m.hazard.strike.r,0,7); ctx.fill(); }
+    if (f.kind==='pop'){ const a=1-f.t/.5; ctx.strokeStyle=f.c?`rgba(185,140,255,${a})`:`rgba(255,176,32,${a})`; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(f.x,f.y,12+f.t*60,0,7); ctx.stroke(); }
+  }
+  drawWeather(m.key,t,dt);
+  if (joy.on){ ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(joy.ox,joy.oy,60,0,7); ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(joy.ox+joy.dx*60,joy.oy+joy.dy*60,20,0,7); ctx.fill(); }
+}
+function updateHud(){
+  const m=G.m, P=G.p, acc=aiAcc(), got=G.sensors.filter(s=>s.got).length;
+  $('#h-time').textContent=Math.max(0,Math.ceil(G.time))+'초';
+  $('#m-time i').style.width=Math.max(0,G.time/G.maxTime*100)+'%'; $('#m-time').classList.toggle('low',G.time<25);
+  $('#h-hp').textContent=Math.max(0,Math.round(P.hp)); $('#m-hp i').style.width=Math.max(0,P.hp)+'%'; $('#m-hp').classList.toggle('low',P.hp<35);
+  $('#h-sensor').textContent=got+'/8'; $('#h-rows').textContent=G.rows.length.toLocaleString()+'행';
+  $('#h-lives').textContent='♥'.repeat(Math.max(0,S.lives))+'♡'.repeat(Math.max(0,3-S.lives));
+  const chips=[];
+  chips.push(acc ? `<span class="chip ai">AI 예측 정확도 ${acc}%</span>` : `<span class="chip">AI 학습 중 · 데이터 ${G.rows.filter(r=>r.kind!=='rumor').length}/150행 · 아직 예측 불가</span>`);
+  if (m.hazard.strike){ const nxt=G.strikes.find(s=>s.ai); if (nxt) chips.push(`<span class="chip ai">AI: ${m.hazard.strike.name} ${Math.max(0,nxt.tele-nxt.t).toFixed(1)}초 뒤</span>`); }
+  if (P.inv>0) chips.push('<span class="chip green">예비 드론 출동 · 잠깐 무적</span>');
+  if (m.hazard.sun) chips.push(G.inShade?'<span class="chip green">그늘에서 식는 중</span>':'<span class="chip red">햇볕 과열 중 · 초록 그늘로!</span>');
+  if (G.bots.some(b=>Math.hypot(P.x-b.x,P.y-b.y)<130)) chips.push('<span class="chip red">가짜 뉴스 봇 접근! 돌진으로 부수세요</span>');
+  if (P.shield) chips.push('<span class="chip ai">보호막 (피해 75% 감소)</span>');
+  $('#chips').innerHTML=chips.join('');
+  const last=G.rows.slice(-5);
+  $('#log').innerHTML='<span class="h">t(초)  구역     '+m.metric.slice(0,10)+'</span>\n'+last.map(r=>{
+    const where=r.d?DNAME[r.d]:'??';
+    const val=r.kind==='rumor'?'"소문" (출처 불명)':r.kind==='privacy'?'개인정보 ●●●':(r.v===null?'— 결측':fmt(r.v,m)+' '+m.unit);
+    return `${String(r.t).padStart(5)}  ${where.padEnd(4,'　')}  ${val}`;
+  }).join('\n');
+}
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  if (!$('#sc-game').hidden && G){
+    tickDialog(dt);
+    const run = G.phase==='play' && $('#modal').hidden && !DLG;
+    if (run) update(dt);
+    render(now/1000, run?dt:0);
+    if (G) updateHud();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===================== 분석 ===================== */
+let A=null;
+function endPlay(){
+  G.phase='done'; keys.clear();
+  const m=G.m;
+  // 출처별 묶음
+  const groups=[];
+  for (const s of G.sensors) if (s.got){
+    const rows=G.rows.filter(r=>r.src===`s:${s.d}-${s.i}`);
+    groups.push({key:`s:${s.d}-${s.i}`, label:`${m.sensor} ${DNAME[s.d]}-${s.i+1}`, n:rows.length,
+      show: s.v===null ? '— (값 없음)' : (s.v===-999||s.v===9999) ? `${s.v} (모든 행 같은 값)` : `평균 ${fmt(rows.reduce((a,r)=>a+r.v,0)/rows.length,m)} ${m.unit}`,
+      bad: s.v===null?'missing':(s.v===-999||s.v===9999)?'error':null});
+  }
+  const dr=G.rows.filter(r=>r.kind==='drone');
+  groups.push({key:'drone', label:'데이터 드론 이동 관측 (지나간 모든 구역)', n:dr.length, show:`구역마다 값이 조금씩 흔들림`, bad:null});
+  if (G.rumorRows) groups.push({key:'rumor', label:'가짜 뉴스 봇이 퍼뜨린 제보', n:G.rumorRows, show:m.rumor, bad:'rumor'});
+  if (G.privacy.taken) groups.push({key:'privacy', label:G.privacy.label, n:G.privacy.rows, show:G.privacy.text, bad:'privacy'});
+  const pool=G.rows.filter(r=>r.kind==='drone'||r.kind==='sensor');
+  for (let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  // 그래프 세로축은 데이터 양을 바꿔도 고정 (막대가 흔들리는 모습을 그대로 비교하도록)
+  const tops=DIST.map(d=>truthMean(m,d.id)); const hi=Math.max(m.threshold,...tops)+m.sd*2.2;
+  A={groups, pool, excluded:new Set(), miss:0, pct:100, top:hi};
+  S.total.rows+=G.rows.length; S.total.sensors+=G.sensors.filter(s=>s.got).length; S.total.botsBroken+=G.botsBroken; S.total.rumorRows+=G.rumorRows;
+  $('#sc-analysis').innerHTML=`
+    <div class="card" id="map-card"></div>
+    <div class="card">
+      <p class="eyebrow">${m.title} · 분석 센터</p>
+      <div class="step-head"><span class="step-no">① 내가 모은 빅데이터</span><h2>출처별로 검증하기</h2></div>
+      <p>드론이 모은 데이터 <b class="mono">${G.rows.length.toLocaleString()}</b>행을 출처별로 묶었어요. 분석에 넣으면 안 되는 묶음을 찾아 <b>눌러서 제외</b>하세요.
+      측정 장비 오류값, 값이 없는 결측값, 출처를 알 수 없는 소문, 개인정보가 담긴 자료가 대상이에요.</p>
+      <div class="tablebox"><table><thead><tr><th>출처</th><th>행 수</th><th>내용</th><th>분석에</th></tr></thead><tbody id="g-rows"></tbody></table></div>
+      <p class="muted" style="font-size:13px">참고: 이 지역 ${m.metric}의 정상 범위는 대략 ${m.key==='rain'?'0~200 mm':m.key==='dust'?'0~1000 µg/m³':'20~45 ℃'}예요.</p>
+      <div class="row"><button class="btn" id="btn-clean">검증 완료</button></div>
+      <div id="clean-fb"></div>
+    </div>
+    <div class="card" id="an2" hidden>
+      <div class="step-head"><span class="step-no">② 데이터로 규칙 찾기</span><h2>구역별 ${m.metric}</h2></div>
+      <p class="muted" style="font-size:14px">흰 점 = 측정값 하나하나, 막대 = 구역 평균, 막대 위 세로선 = 평균이 흔들릴 수 있는 범위(오차 범위), 노란 점선 = 경보 기준. 측정값은 시간과 장소에 따라 크게 흔들려요.</p>
+      <div style="overflow-x:auto" id="chart"></div>
+      <div class="slider"><div class="lbl"><span>분석에 쓸 데이터 양 <span id="pct-n"></span></span><b class="mono" id="pct-l">100%</b></div>
+        <input type="range" id="pct" min="1" max="100" step="1" value="100" aria-label="분석에 쓸 데이터 양"></div>
+      <div class="row"><button class="btn ghost" id="btn-resample">다른 데이터로 다시 뽑기 ↻</button>
+        <span class="muted" style="font-size:13px">같은 양을 무작위로 다시 뽑아요. 데이터가 적을 때와 많을 때 눌러서 막대가 얼마나 달라지는지 비교해 보세요.</span></div>
+      <div class="q" id="q1"></div>
+      <div class="q" id="q2" hidden></div>
+    </div>
+    <div class="card" id="an3" hidden></div>`;
+  $('#map-card').appendChild(mapDetails(true));
+  renderGroups();
+  $('#btn-clean').onclick=checkClean;
+  show('analysis');
+}
+// 게임 지도 다시 보기: 드론 이동 경로, 관측소 수집 여부, 대원 위치
+function mapDetails(open){
+  const m=G.m, d=document.createElement('details'); d.className='mapview'; d.open=open;
+  d.innerHTML=`<summary>${m.title} 게임 지도 다시 보기</summary><p class="muted" style="font-size:13px;margin-top:6px">노란 선 = 드론이 지나간 길 · 초록 체크 = 내려받은 관측소 · 회색 = 못 간 관측소. 구역마다 대원이 한 명씩 있어요.</p>`;
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  if (!BG) BG=drawStaticMap(); g.drawImage(BG,0,0);
+  if (m.hazard.sun) for (const s of SHADE){ g.strokeStyle='rgba(57,217,138,.7)'; g.setLineDash([5,4]); g.lineWidth=2; g.beginPath(); g.arc(s.x,s.y,s.r,0,7); g.stroke(); g.setLineDash([]); }
+  g.strokeStyle='rgba(255,176,32,.85)'; g.lineWidth=3; g.lineJoin='round'; g.beginPath();
+  G.path.forEach(([x,y],i)=>{ const pr=G.path[i-1]; if (!i || Math.hypot(x-pr[0],y-pr[1])>80) g.moveTo(x,y); else g.lineTo(x,y); }); g.stroke();
+  for (const s of G.sensors){
+    g.fillStyle=s.got?'#0e2036':'rgba(14,32,54,.6)'; g.beginPath(); g.arc(s.x,s.y,13,0,7); g.fill();
+    g.strokeStyle=s.got?'#39d98a':'#7a8aa0'; g.lineWidth=3; g.stroke();
+    g.fillStyle='#fff'; g.font='bold 12px "IBM Plex Sans KR", sans-serif'; g.textAlign='center';
+    g.fillText(s.got?'✓':'×',s.x,s.y+4);
+    g.fillStyle='rgba(11,22,38,.8)'; const lab=`${DNAME[s.d]}-${s.i+1}`; const w=g.measureText(lab).width+8; g.fillRect(s.x-w/2,s.y+16,w,16); g.fillStyle='#fff'; g.fillText(lab,s.x,s.y+28);
+  }
+  for (const id of Object.keys(CREW)){ const cr=CREW[id], x=cr.pos[0]*T+T/2, y=cr.pos[1]*T+T/2;
+    g.fillStyle=cr.color; g.fillRect(x-6,y-2,12,14); g.fillStyle='#f3d2b3'; g.beginPath(); g.arc(x,y-7,6,0,7); g.fill();
+    g.fillStyle='rgba(11,22,38,.8)'; const w=g.measureText(cr.name).width+10; g.fillRect(x-w/2,y-34,w,17); g.fillStyle='#fff'; g.fillText(cr.name,x,y-21); }
+  d.appendChild(c); return d;
+}
+function renderGroups(hint){
+  const tb=$('#g-rows'); tb.innerHTML='';
+  for (const g of A.groups){
+    const ex=A.excluded.has(g.key), tr=document.createElement('tr');
+    const wrong = (g.bad&&!ex) || (!g.bad&&ex);
+    tr.className='tog'+(ex?' excluded':'')+(hint&&wrong?' hint':''); tr.tabIndex=0;
+    tr.innerHTML=`<td>${g.label}${hint&&wrong?'<span class="chk">확인 필요</span>':''}</td><td class="num">${g.n.toLocaleString()}</td><td>${g.show}</td><td class="st"><span class="tag ${ex?'out':'in'}">${ex?'제외':'사용'}</span></td>`;
+    const tog=()=>{ if (A.locked) return; ex?A.excluded.delete(g.key):A.excluded.add(g.key); renderGroups(hint); };
+    tr.onclick=tog; tr.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tog(); } };
+    tb.appendChild(tr);
+  }
+}
+function checkClean(){
+  const badIn=A.groups.filter(g=>g.bad&&!A.excluded.has(g.key)), goodOut=A.groups.filter(g=>!g.bad&&A.excluded.has(g.key)), fb=$('#clean-fb');
+  if (!badIn.length&&!goodOut.length){
+    const why={error:'측정 장비 오류값',missing:'결측값',rumor:'검증되지 않은 소문',privacy:'개인정보 포함'};
+    const out=A.groups.filter(g=>g.bad).map(g=>`${g.label}: ${why[g.bad]}`);
+    fb.innerHTML=`<p class="feedback good">검증 완료! ${out.length?'제외 — '+out.join(' · '):'이번에는 걸러 낼 자료가 없었어요.'}</p>`;
+    A.locked=true; $('#btn-clean').disabled=true; document.querySelectorAll('#g-rows tr').forEach(tr=>tr.style.cursor='default');
+    $('#an2').hidden=false; drawChart(); setupQuestions();
+    $('#pct').oninput=e=>{ A.pct=+e.target.value; $('#pct-l').textContent=A.pct+'%'; drawChart(); };
+    $('#btn-resample').onclick=()=>{ const p=A.pool; for (let i=p.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [p[i],p[j]]=[p[j],p[i]]; } drawChart(); };
+    $('#an2').scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
+    return;
+  }
+  A.miss++; S.total.cleanMiss++;
+  const msg=[];
+  if (badIn.length) msg.push(`분석에 넣으면 안 되는 묶음이 <b>${badIn.length}개</b> 남아 있어요. 같은 구역의 다른 값과 비교하거나 출처를 다시 보세요.`);
+  if (goodOut.length) msg.push(`정상 데이터를 <b>${goodOut.length}개</b> 묶음 제외했어요. 값이 크다는 것만으로 오류는 아니에요.`);
+  msg.push('확인이 필요한 묶음을 <b style="color:var(--signal)">노란색</b>으로 표시했어요. 고친 뒤 다시 검증 완료를 누르세요.');
+  fb.innerHTML=`<p class="feedback bad">${msg.join('<br>')}</p>`; renderGroups(true);
+}
+function districtStats(pct){
+  // 무작위로 섞어 둔 순서에서 앞쪽 pct%만 사용 (표본 크기 체험)
+  const use=A.pool.filter(r=>!A.excluded.has(r.src) && r.v!==null);
+  const n=Math.max(1,Math.round(use.length*pct/100)), sub=use.slice(0,n), out={};
+  for (const d of DIST){
+    const v=sub.filter(r=>r.d===d.id).map(r=>r.v);
+    if (!v.length){ out[d.id]=null; continue; }
+    const mean=v.reduce((a,b)=>a+b,0)/v.length;
+    const sd=v.length>1?Math.sqrt(v.reduce((a,b)=>a+(b-mean)**2,0)/(v.length-1)):G.m.sd;
+    out[d.id]={mean,n:v.length,v,err:2*Math.max(sd,G.m.sd*.5)/Math.sqrt(v.length)};
+  }
+  out.total=sub.length;
+  return out;
+}
+function drawChart(target='#chart', pct=A.pct){
+  const m=G.m, st=districtStats(pct), Wc=640, Hc=320, L=56, R=16, Tp=24, B=46, ih=Hc-Tp-B, iw=Wc-L-R;
+  const lo = m.key==='heat' ? 24 : 0;  // 체감온도는 24 ℃부터 그려 차이가 잘 보이게
+  const raw=(A.top-lo)/5, p=10**Math.floor(Math.log10(raw)), f=raw/p, step=(f<=1?1:f<=2?2:f<=5?5:10)*p, top=lo+Math.ceil((A.top-lo)/step)*step;
+  const y=v=>Tp+ih-(Math.max(lo,Math.min(top,v))-lo)/(top-lo)*ih;
+  if ($('#pct-n') && target==='#chart') $('#pct-n').textContent=`(측정값 ${st.total.toLocaleString()}개)`;
+  let s=`<svg class="chart" viewBox="0 0 ${Wc} ${Hc}" role="img" aria-label="구역별 ${m.metric}">
+    <defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#1a2f4d"/><line x1="0" y1="0" x2="0" y2="8" stroke="#4a6080" stroke-width="3"/></pattern></defs>`;
+  for (let v=lo;v<=top+1e-9;v+=step) s+=`<line x1="${L}" x2="${Wc-R}" y1="${y(v)}" y2="${y(v)}" stroke="#2a4366"/><text x="${L-8}" y="${y(v)+4}" fill="#9fb3cc" font-size="12" text-anchor="end" font-family="IBM Plex Mono, monospace">${+v.toFixed(2)}</text>`;
+  s+=`<text x="${L-8}" y="${Tp-8}" fill="#9fb3cc" font-size="12" text-anchor="end">${m.unit}</text>`;
+  const bw=iw/4;
+  DIST.forEach((d,i)=>{
+    const q=st[d.id], x0=L+i*bw+bw*.22, w=bw*.56, cx=x0+w/2;
+    if (q){
+      const over=q.mean>=m.threshold;
+      s+=`<rect x="${x0}" y="${y(q.mean)}" width="${w}" height="${y(lo)-y(q.mean)}" rx="4" fill="${over?'#ff5d4f':'#5cc8ff'}" opacity=".55"/>`;
+      // 측정값 점 (많으면 일부만)
+      const step2=Math.max(1,Math.floor(q.v.length/70));
+      for (let k=0;k<q.v.length;k+=step2){ const jx=x0+6+((k*37)%100)/100*(w-12); s+=`<circle cx="${jx.toFixed(1)}" cy="${y(q.v[k]).toFixed(1)}" r="2.6" fill="#eaf1fa" opacity=".7"/>`; }
+      s+=`<line x1="${x0}" x2="${x0+w}" y1="${y(q.mean)}" y2="${y(q.mean)}" stroke="${over?'#ff5d4f':'#5cc8ff'}" stroke-width="4"/>
+          <line x1="${cx}" x2="${cx}" y1="${y(q.mean+q.err)}" y2="${y(q.mean-q.err)}" stroke="#eaf1fa" stroke-width="2"/>
+          <line x1="${cx-8}" x2="${cx+8}" y1="${y(q.mean+q.err)}" y2="${y(q.mean+q.err)}" stroke="#eaf1fa" stroke-width="2"/>
+          <line x1="${cx-8}" x2="${cx+8}" y1="${y(q.mean-q.err)}" y2="${y(q.mean-q.err)}" stroke="#eaf1fa" stroke-width="2"/>
+          <rect x="${x0+w+2}" y="${y(q.mean)-10}" width="44" height="20" rx="4" fill="#0b1626"/>
+          <text x="${x0+w+6}" y="${y(q.mean)+5}" fill="#eaf1fa" font-size="13" font-family="IBM Plex Mono, monospace" font-weight="600">${fmt(q.mean,m)}</text>`;
+    } else s+=`<rect x="${x0}" y="${Tp+ih*.35}" width="${w}" height="${ih*.65}" rx="4" fill="url(#hatch)"/><text x="${cx}" y="${Tp+ih*.35-7}" fill="#9fb3cc" font-size="13" text-anchor="middle">데이터 없음</text>`;
+    s+=`<text x="${cx}" y="${Hc-B+20}" fill="#eaf1fa" font-size="15" text-anchor="middle" font-family="Do Hyeon, sans-serif">${d.name}</text>
+        <text x="${cx}" y="${Hc-B+37}" fill="#9fb3cc" font-size="11" text-anchor="middle">데이터 ${q?q.n:0}개</text>`;
+  });
+  s+=`<line x1="${L}" x2="${Wc-R}" y1="${y(m.threshold)}" y2="${y(m.threshold)}" stroke="#ffb020" stroke-width="2" stroke-dasharray="6 5"/>
+      <text x="${Wc-R}" y="${y(m.threshold)-6}" fill="#ffb020" font-size="12" text-anchor="end">경보 기준 ${m.threshold}</text>
+      <line x1="${L}" x2="${Wc-R}" y1="${y(lo)}" y2="${y(lo)}" stroke="#9fb3cc"/></svg>`;
+  $(target).innerHTML=s;
+}
+function question(el, q, onRight){
+  el.hidden=false;
+  el.innerHTML=`<p><b>질문</b> ${q.q}</p><div class="opts"></div><div class="fb"></div>`;
+  const box=el.querySelector('.opts');
+  q.opts.forEach((o,i)=>{ const b=document.createElement('button'); b.className='opt'; b.textContent=o;
+    b.onclick=()=>{ if (i===q.a){ b.classList.add('right'); box.querySelectorAll('button').forEach(x=>x.disabled=true); el.querySelector('.fb').innerHTML=`<p class="feedback good">${q.ok}</p>`; onRight&&onRight(); }
+      else { b.classList.add('wrong'); b.disabled=true; el.querySelector('.fb').innerHTML=`<p class="feedback bad">${q.no}</p>`; } };
+    box.appendChild(b); });
+}
+function setupQuestions(){
+  const m=G.m;
+  question($('#q1'), {q:'슬라이더를 왼쪽 끝(1%)에 두고 "다시 뽑기"를 여러 번 눌러 보세요. 그다음 오른쪽 끝(100%)에서도 눌러 보세요. 막대 높이가 덜 흔들리고 판단을 믿을 수 있는 쪽은?', opts:['데이터를 조금만 쓸 때','데이터를 전부 쓸 때 (빅데이터)','차이가 없다'], a:1,
+    ok:'맞아요! 데이터가 적으면 뽑을 때마다 평균이 크게 달라져서, 같은 구역이 어떤 때는 기준을 넘고 어떤 때는 안 넘어요. 데이터가 많을수록 우연한 흔들림이 서로 상쇄되어 평균이 안정되고, 경보를 보낼지 믿고 판단할 수 있어요. 이것이 빅데이터를 쓰는 이유예요.',
+    no:'슬라이더를 1%에 두고 "다시 뽑기"를 다섯 번쯤 눌러 막대 높이를 보세요. 100%에서도 똑같이 해 보세요.'}, ()=>question($('#q2'), m.q2, showAlert));
+}
+function showAlert(){
+  const m=G.m, st=districtStats(100), el=$('#an3'); el.hidden=false;
+  A.sel=new Set(); A.atype=null;
+  el.innerHTML=`
+    <div class="step-head"><span class="step-no">③ 경보 발령</span><h2>정보를 판단으로</h2></div>
+    <p>그래프를 근거로 <b>어떤 경보</b>를 <b>어느 구역</b>에 보낼지 정하세요. 위험한 구역을 놓치면 대원이 다치고, 안전한 구역에 경보를 남발하면 경보를 믿지 않게 돼요.</p>
+    <div class="alert-grid">
+      <div style="display:grid;gap:8px;min-width:0"><h3>1. 경보 종류</h3>
+        <div class="atype">${ALERTS.map(a=>`<label><input type="radio" name="atype" id="at-${a.id}" value="${a.id}"><span><b>${a.name}</b><small>${a.act}</small></span></label>`).join('')}</div></div>
+      <div style="display:grid;gap:8px;align-content:start;min-width:0"><h3>2. 보낼 구역 (눌러서 선택)</h3>
+        <div class="dgrid">${DIST.map(d=>{const q=st[d.id]; return `<button class="dcard" id="dc-${d.id}" aria-pressed="false" data-d="${d.id}">
+          <span class="nm">${d.name}</span><span class="v">${q?fmt(q.mean,m)+' '+m.unit:'데이터 없음'}</span><span class="crew">대원 ${CREW[d.id].name} · ${d.desc}</span><span class="flag">경보 안 보냄</span></button>`;}).join('')}</div>
+        <p class="muted" style="font-size:13px">${m.rule}</p></div>
+    </div>
+    <div class="row"><button class="btn danger" id="btn-send" disabled>경보 발송</button><span class="muted" id="send-sum" style="font-size:14px">경보 종류를 고르세요.</span></div>`;
+  const sum=()=>{ const a=ALERTS.find(x=>x.id===A.atype); $('#btn-send').disabled=!a;
+    $('#send-sum').textContent=!a?'경보 종류를 고르세요.':A.sel.size?`${a.name} → ${[...A.sel].map(d=>DNAME[d]).join(', ')}`:`보낼 구역이 없어요. 이대로 보내면 모든 구역에 "경보 없음"을 알려요.`; };
+  el.querySelectorAll('input[name=atype]').forEach(i=>i.onchange=()=>{A.atype=i.value; sum();});
+  el.querySelectorAll('.dcard').forEach(b=>b.onclick=()=>{ const d=b.dataset.d; A.sel.has(d)?A.sel.delete(d):A.sel.add(d); const on=A.sel.has(d); b.setAttribute('aria-pressed',on); b.querySelector('.flag').textContent=on?'경보 보냄':'경보 안 보냄'; sum(); });
+  $('#btn-send').onclick=evaluate;
+  el.insertBefore(mapDetails(false), el.querySelector('.alert-grid'));
+  el.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
+}
+
+/* ===================== 결과 ===================== */
+function evaluate(){
+  const m=G.m, seen=districtStats(100), right=A.atype===m.alert; let rescued=0, fa=0; const cards=[];
+  for (const d of DIST){
+    const tm=truthMean(m,d.id), danger=tm>=m.threshold, sent=A.sel.has(d.id); let safe,res;
+    if (danger&&sent&&right){safe=true;res='경보를 받고 대피 완료';}
+    else if (danger&&sent){safe=false;res=`경보 종류가 달라 잘못 대피 (실제 위험: ${m.short})`;}
+    else if (danger){safe=false;res=seen[d.id]?'경보를 받지 못해 위험에 노출':'데이터가 없어 위험을 놓침';}
+    else if (sent){safe=true;fa++;res='안전했지만 불필요한 경보로 작업 중단';}
+    else {safe=true;res='위험 없음, 작업 계속';}
+    if (safe) rescued++;
+    cards.push(`<div class="crewcard ${safe?'safe':'hurt'}"><b>${CREW[d.id].name}</b><span class="muted" style="font-size:13px">${d.name} · 실제 ${fmt(tm,m)} ${m.unit}</span><div class="res">${res}</div></div>`);
+  }
+  const got=G.sensors.filter(s=>s.got).length, used=G.rows.filter(r=>(r.kind==='drone'||r.kind==='sensor')&&!A.excluded.has(r.src)&&r.v!==null).length;
+  S.total.rescued+=rescued; S.total.crew+=4; S.total.falseAlarm+=fa;
+  S.total.log.push({short:m.short,rescued,fa,got,rows:G.rows.length,right});
+  const crit=[
+    {ok:rescued===4, t:'대원 4명 모두 안전'},
+    {ok:fa===0&&right, t:'알맞은 경보 종류 · 불필요한 경보 없음'},
+    {ok:!G.privacy.taken&&A.miss===0, t:'데이터 윤리: 개인정보를 수집하지 않고, 검증을 한 번에 통과'},
+  ];
+  const stars=crit.filter(c=>c.ok).length;
+  const lastM=S.m===MISSIONS.length-1;
+  $('#sc-result').innerHTML=`
+    <div class="card">
+      <p class="eyebrow">${m.title} 결과</p>
+      <h2>대원 4명 중 ${rescued}명 안전 <span style="color:var(--signal)">${'★'.repeat(stars)}</span><span style="color:var(--line)">${'★'.repeat(3-stars)}</span></h2>
+      <div class="stars">${crit.map(c=>`<span class="${c.ok?'on':'off'}">${c.ok?'★':'☆'} ${c.t}</span>`).join('')}</div>
+      <div class="crewlist">${cards.join('')}</div>
+      <div class="score">
+        <div><b>${got}/8</b><span>내려받은 관측소</span></div>
+        <div><b>${G.rows.length.toLocaleString()}</b><span>모은 데이터 (행)</span></div>
+        <div><b>${G.botsBroken} / ${G.rumorRows}</b><span>부순 봇 / 섞인 소문</span></div>
+        <div><b>${fa}</b><span>불필요한 경보</span></div>
+      </div>
+      <div class="pipeline">
+        <div class="pipe d"><b>데이터</b><span>${G.rows.length.toLocaleString()}행 수집 → 검증 후 ${used.toLocaleString()}행만 분석에 사용</span></div>
+        <div class="pipe i"><b>정보</b><span>구역별 평균 ${m.metric} 그래프와 오차 범위, 경보 기준선</span></div>
+        <div class="pipe k"><b>지식</b><span>${ALERTS.find(a=>a.id===A.atype).name}${right?'':' (알맞은 경보: '+ALERTS.find(a=>a.id===m.alert).name+')'} → ${A.sel.size?[...A.sel].map(d=>DNAME[d]).join(', '):'보낸 구역 없음'}</span></div>
+      </div>
+      <div class="concept"><h3>${m.concept.title}</h3><p>${m.concept.body}</p></div>
+      <div class="think"><b>생각해 보기</b><p>${m.think}</p>
+        <label for="note" class="muted" style="font-size:13px;margin-top:6px">나의 생각 (한두 문장으로 적어 보세요. 최종 보고서에 모아서 보여 줘요)</label>
+        <textarea id="note" maxlength="400" placeholder="예: 데이터를 그대로 믿으면 …"></textarea></div>
+      <div class="row"><button class="btn" id="btn-next">${lastM?'마지막 선택으로':'다음 임무'}</button></div>
+    </div>`;
+  $('#note').value=S.total.notes[m.short]||'';
+  $('#note').oninput=e=>{ S.total.notes[m.short]=e.target.value; };
+  $('#btn-next').onclick=()=>{ S.total.notes[m.short]=$('#note').value; S.m++; if (lastM) finalVote(); else startMission(); };
+  show('result');
+}
+function finalVote(){
+  const v=STORY.vote;
+  $('#sc-final').innerHTML=`
+    <div class="card">
+      <p class="eyebrow">마지막 선택</p>
+      <div class="say"><span class="who">나래 (AI 파트너)</span><p>세 번의 재난에서 대원들을 지켜 냈어요. 그런데 대원님께 꼭 물어보고 싶은 게 있어요.</p></div>
+      <div class="say"><span class="who">나래 (AI 파트너)</span><p>${v.q}</p></div>
+      <div class="opts" id="vote">${v.opts.map((o,i)=>`<button class="opt" data-i="${i}">${o.t}</button>`).join('')}</div>
+      <div id="vote-r"></div>
+    </div>`;
+  document.querySelectorAll('#vote .opt').forEach(b=>b.onclick=()=>{
+    const o=v.opts[+b.dataset.i]; S.total.vote=o.t; document.querySelectorAll('#vote .opt').forEach(x=>{x.disabled=true; if(x===b) x.classList.add('right');});
+    $('#vote-r').innerHTML=`<div class="say" style="margin-top:12px"><span class="who">나래 (AI 파트너)</span><p>${o.r}</p><p>정답이 하나인 문제는 아니에요. 빅데이터를 쓸 때는 얻는 이익과 사생활 침해 위험을 함께 따져 봐야 해요.</p></div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="btn-report">최종 보고서 보기</button></div>`;
+    $('#btn-report').onclick=finalReport;
+  });
+  show('final');
+}
+function finalReport(){
+  const t=S.total;
+  $('#sc-final').innerHTML=`
+    <div class="card">
+      <p class="eyebrow">최종 보고서 · ${esc(S.name)} 대원</p>
+      <h2>대원 ${t.crew}명 중 ${t.rescued}명 구출</h2>
+      <div class="score">
+        <div><b>${t.rows.toLocaleString()}</b><span>모은 데이터 (행)</span></div>
+        <div><b>${t.sensors}/24</b><span>내려받은 관측소</span></div>
+        <div><b>${t.privBlocked}/3</b><span>지켜 낸 개인정보</span></div>
+        <div><b>${t.botsBroken} · ${t.lost}</b><span>부순 봇 · 잃은 드론</span></div>
+      </div>
+      <div class="tablebox"><table><thead><tr><th>임무</th><th>안전한 대원</th><th>관측소</th><th>데이터</th><th>경보 종류</th><th>불필요한 경보</th></tr></thead>
+        <tbody>${t.log.map(l=>`<tr><td>${l.short}</td><td class="num">${l.rescued}/4</td><td class="num">${l.got}/8</td><td class="num">${l.rows.toLocaleString()}행</td><td>${l.right?'알맞음':'틀림'}</td><td class="num">${l.fa}</td></tr>`).join('')}</tbody></table></div>
+      <h3>게임으로 돌아본 빅데이터 활용</h3>
+      <div class="proscons">
+        <div class="card" style="padding:14px"><b style="color:var(--ok)">장점</b><ul>
+          <li>도시 곳곳의 데이터를 실시간으로 모아 현상을 빠르게 이해하고 정확하게 예측했어요. (구출 ${t.rescued}명)</li>
+          <li>데이터가 쌓일수록 AI가 낙뢰·먼지 구름을 더 빨리 예측했어요. 데이터가 많을수록 예측이 정확해져요.</li>
+          <li>기상 관측, 대기질, 도시 생활 데이터 같은 일상의 빅데이터가 안전과 편리를 높여요.</li></ul></div>
+        <div class="card" style="padding:14px"><b style="color:var(--alert)">문제점</b><ul>
+          <li><b>사생활 침해</b>: 위치 기록, CCTV 영상, 건강 기록 (수집 ${t.privTaken}회). 데이터 양을 늘리고 싶은 유혹과 개인정보 보호가 부딪혀요.</li>
+          <li><b>검증되지 못한 데이터</b>: 가짜 뉴스 봇의 소문이 섞이면 AI 예측이 오히려 나빠졌어요. (섞인 소문 ${t.rumorRows}행)</li>
+          <li><b>지나친 데이터 의존</b>: 장비 오류값(-999, 9999)을 그대로 믿었다면 판단이 완전히 달라졌을 거예요. (검증 다시 하기 ${t.cleanMiss}회)</li></ul></div>
+      </div>
+      <div class="think"><b>나의 생각 모음</b>
+        ${MISSIONS.map(mm=>`<p><b style="color:var(--text)">${mm.short}</b> · ${esc(mm.think)}<br>→ ${t.notes[mm.short]?esc(t.notes[mm.short]):'<span class="muted">(적지 않음)</span>'}</p>`).join('')}
+        <p><b style="color:var(--text)">마지막 선택</b> · ${esc(t.vote||'(선택 안 함)')}</p>
+        <div class="row"><button class="btn ghost" id="btn-copy">내 기록 복사하기</button><span class="muted" id="copy-msg" style="font-size:13px">복사해서 과제 게시판에 붙여 넣을 수 있어요.</span></div>
+        <textarea id="copy-src" readonly hidden></textarea>
+      </div>
+      <div class="think"><b>모둠 토의</b>
+        <p>1. 이 게임의 "데이터 → 정보 → 지식" 과정을 우리 학교 생활에 적용한다면, 어떤 데이터를 모아 어떤 결정을 내릴 수 있을까요?</p>
+        <p>2. 과학 실험, 유전체 분석, 신약 개발, 교통 중 한 분야를 골라 빅데이터가 어떻게 쓰이는지, 어떤 문제가 생길 수 있는지 정리해 보세요.</p></div>
+      <div class="row"><button class="btn" id="btn-again">처음부터 다시</button></div>
+    </div>`;
+  $('#btn-again').onclick=()=>{ S.m=0; resetTotal(); G=null; show('title'); };
+  const txt=`[데이터 구조대 최종 보고서] ${S.name} 대원\n구출 ${t.rescued}/${t.crew}명 · 데이터 ${t.rows}행 · 지켜 낸 개인정보 ${t.privBlocked}/3\n`
+    + MISSIONS.map(mm=>`- ${mm.short}: ${mm.think}\n  → ${t.notes[mm.short]||'(적지 않음)'}`).join('\n')
+    + `\n- 마지막 선택: ${t.vote||'(선택 안 함)'}`;
+  $('#btn-copy').onclick=async()=>{
+    try { await navigator.clipboard.writeText(txt); $('#copy-msg').textContent='복사했어요!'; }
+    catch { const ta=$('#copy-src'); ta.hidden=false; ta.value=txt; ta.select(); $('#copy-msg').textContent='자동 복사가 막혀 있어요. 아래 글을 선택해 Ctrl+C로 복사하세요.'; }
+  };
+  scrollTo({top:0});
+}
+
+/* ===================== 시작 ===================== */
+function initTitle(){ BG=drawStaticMap(); $('#sc-title').style.backgroundImage=`url(${BG.toDataURL('image/png')})`; }
+$('#btn-start').onclick=()=>{ S.name=($('#in-name').value.trim()||'새내기').slice(0,10); startMission(); };
+initTitle();
+if (document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{ BG=null; initTitle(); });
+</script>
