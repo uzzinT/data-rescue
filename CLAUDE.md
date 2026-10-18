@@ -56,6 +56,9 @@
 
 ## 작업 방법
 
+- 저장소: https://github.com/uzzinT/data-rescue (공개). `main` 브랜치에 올리면 GitHub Pages(https://uzzint.github.io/data-rescue/)에 1~2분 뒤 반영된다.
+- 학교 컴퓨터에서 이어서 작업할 때: `git clone https://github.com/uzzinT/data-rescue.git` → 수정 → `git add -A` → `git commit -m "변경 내용"` → `git push`. 작업 전에는 `git pull`로 최신 상태를 받는다.
+
 - 수정 후 브라우저에서 직접 플레이해 확인: 세 임무 → 분석 → 경보 → 결과 → 마지막 선택 → 최종 보고서까지.
 - Claude 아티팩트(claude.ai 링크)로도 게시해 왔음. 아티팩트로 게시할 때는 파일 맨 위 4줄(`<!doctype html>` ~ viewport meta)을 빼고 게시한다.
   - 2D 액션판: https://claude.ai/artifact/MGHgsG8bajkNgKoaF2fUgd

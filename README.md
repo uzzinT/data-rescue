@@ -5,6 +5,8 @@
 
 ## 바로 해 보기
 
+**학생용 주소: https://uzzint.github.io/data-rescue/** (1차 초안: https://uzzint.github.io/data-rescue/v1/)
+
 | 버전 | 파일 | 특징 |
 |---|---|---|
 | **2D 액션판 (현재 버전)** | [`index.html`](index.html) | AI 파트너 대사, 재난 피하기, AI 예측, 데이터 양 슬라이더, 윤리 선택 |
