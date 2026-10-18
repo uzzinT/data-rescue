@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>데이터 구조대 2D</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,6 +21,10 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{background:var(--bg);color:var(--text)}
+/* 화면 확대 막기: 두 번 탭·두 손가락 확대·글자 입력 시 자동 확대 */
+html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.stage,.stage *{touch-action:none}
+@media (pointer:coarse){input,textarea,select{font-size:16px!important}}
 body{font-family:var(--f-body);font-size:15px;line-height:1.6}
 .wrap{max-width:1040px;margin:0 auto;padding-block:14px 48px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
@@ -520,6 +524,12 @@ function aiAcc(){
 }
 
 /* ===================== 입력 ===================== */
+// 화면이 커지지 않게: 두 손가락 확대(사파리), Ctrl+휠, Ctrl +/- 확대를 막음
+['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+document.addEventListener('touchmove',e=>{ if (e.touches.length>1) e.preventDefault(); },{passive:false});
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+addEventListener('wheel',e=>{ if (e.ctrlKey) e.preventDefault(); },{passive:false});
+addEventListener('keydown',e=>{ if ((e.ctrlKey||e.metaKey) && ['+','=','-','_','0'].includes(e.key)) e.preventDefault(); });
 const keys=new Set();
 const KM={ArrowUp:'u',KeyW:'u',ArrowDown:'d',KeyS:'d',ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r'};
 addEventListener('keydown',e=>{
@@ -903,7 +913,9 @@ function endPlay(){
   }
   const dr=G.rows.filter(r=>r.kind==='drone');
   groups.push({key:'drone', label:'데이터 드론 이동 관측 (지나간 모든 구역)', n:dr.length, show:`구역마다 값이 조금씩 흔들림`, bad:null});
-  if (G.rumorRows) groups.push({key:'rumor', label:`가짜 뉴스 봇이 퍼뜨린 제보 (봇 ${G.rumorRows}개)`, n:G.rumorRows, show:G.rows.filter(r=>r.kind==='rumor').map(r=>esc(r.text)).join('<br>'), bad:'rumor'});
+  // 가짜 뉴스 봇 1개 = 소문 1줄 (제외할 줄 수 = 닿은 봇 수)
+  G.rows.filter(r=>r.kind==='rumor').forEach((r,i)=>groups.push({key:'rumor:'+i, label:`가짜 뉴스 봇 ${i+1}의 제보`, n:1,
+    show:esc(r.text)+(i>=m.rumors.length?' <span class="muted">(같은 소문이 또 퍼짐)</span>':''), bad:'rumor'}));
   if (G.privacy.taken) groups.push({key:'privacy', label:G.privacy.label, n:G.privacy.rows, show:G.privacy.text, bad:'privacy'});
   const pool=G.rows.filter(r=>r.kind==='drone'||r.kind==='sensor');
   for (let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
@@ -978,7 +990,8 @@ function checkClean(){
   const badIn=A.groups.filter(g=>g.bad&&!A.excluded.has(g.key)), goodOut=A.groups.filter(g=>!g.bad&&A.excluded.has(g.key)), fb=$('#clean-fb');
   if (!badIn.length&&!goodOut.length){
     const why={error:'측정 장비 오류값',missing:'결측값',rumor:'검증되지 않은 소문',privacy:'개인정보 포함'};
-    const out=A.groups.filter(g=>g.bad).map(g=>`${g.label}: ${why[g.bad]}`);
+    const out=A.groups.filter(g=>g.bad&&g.bad!=='rumor').map(g=>`${g.label}: ${why[g.bad]}`);
+    const nr=A.groups.filter(g=>g.bad==='rumor').length; if (nr) out.push(`가짜 뉴스 봇 제보 ${nr}줄: ${why.rumor}`);
     fb.innerHTML=`<p class="feedback good">검증 완료! ${out.length?'제외 — '+out.join(' · '):'이번에는 걸러 낼 자료가 없었어요.'}</p>`;
     A.locked=true; $('#btn-clean').disabled=true; document.querySelectorAll('#g-rows tr').forEach(tr=>tr.style.cursor='default');
     $('#an2').hidden=false; drawChart(); setupQuestions();
