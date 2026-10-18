@@ -92,6 +92,10 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .touch .shield{background:rgba(92,200,255,.65);color:#04223a}
 @media (pointer:coarse){.touch{display:flex}}
 .modal{position:absolute;inset:0;background:rgba(5,10,20,.66);display:grid;place-items:center;padding:12px}
+.pmodal{position:fixed;inset:0;z-index:50;background:rgba(5,10,20,.72);display:grid;place-items:center;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pmodal .card{max-width:440px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+#img-out img{display:block;max-width:100%;border:1px solid var(--line);border-radius:10px;margin-top:8px}
 .modal .card{max-width:440px;width:100%;font-size:14px;padding:16px;gap:10px;max-height:100%;overflow:auto}
 .item{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2);display:grid;gap:3px}
 .item .src{font-size:12px;color:var(--muted)}
@@ -247,6 +251,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
   <section id="sc-result" hidden></section>
   <section id="sc-final" hidden></section>
 </div>
+<div class="pmodal" id="pmodal" hidden><div class="card" id="pmodal-card" role="dialog" aria-modal="true"></div></div>
 
 <script>
 /* =========================================================
@@ -279,9 +284,10 @@ const MISSIONS = [
     key:'rain', short:'집중호우', title:'임무 1 · 집중호우', sensor:'강우량계',
     metric:'3시간 누적 강수량', unit:'mm', digits:0, threshold:90, sd:32,
     rule:'3시간 누적 강수량 90 mm 이상 → 호우 경보 (기상청 기준)', alert:'rain', timeName:'비구름 도착까지',
-    values:{sky:[30,38], hill:[108,-999], river:[126,118], sea:[58,64]},
-    hazard:{strike:{every:1.6, dmg:13, r:48, name:'낙뢰'}},
-    rumor:'"강변동 지하차도에 물이 2 m 찼대요!! 빨리 공유!!"',
+    values:{sky:[30,38], hill:[98,-999], river:[126,118], sea:[58,64]},
+    hazard:{strike:{every:1.5, dmg:20, r:48, name:'낙뢰'}},
+    rumors:['"강변동 지하차도에 물이 2 m 찼대요!! 빨리 공유!!"','"산마루동 뒷산 무너졌다던데? 친구가 그랬음"','"하늘동 아파트 지하 주차장 다 잠겼대ㅠㅠ"','"바다동 방파제 넘쳤다는 영상 봤어요 (출처는 모름)"','"비가 300 mm 온다는 기상청 비밀 문서 유출!"','"오늘 학교 휴교래! 교육청 공문 떴대"'],
+    notePh:'예: -999를 그대로 넣으면 평균이 …해져서, 산마루동은 …라고 잘못 판단했을 것 같다.',
     privacy:{pos:[19,4], label:'휴대전화 위치 기록', rows:300, text:'산마루동 주민 312명의 이름 · 전화번호 · 실시간 위치', src:'통신사 원본 기록 (개인을 알아볼 수 있음)',
       why:'개인을 알아볼 수 있는 위치 기록은 사생활 침해 위험이 큽니다. 꼭 필요하다면 개인을 알아볼 수 없게 처리한 통계(예: 시간대별 인구 수)를 써야 해요.'},
     intro:[
@@ -299,9 +305,10 @@ const MISSIONS = [
     key:'dust', short:'미세먼지', title:'임무 2 · 미세먼지', sensor:'미세먼지 측정기',
     metric:'최근 2시간 평균 PM10 농도', unit:'µg/m³', digits:0, threshold:150, sd:48,
     rule:'PM10 시간 평균 150 µg/m³ 이상이 2시간 넘게 지속 → 미세먼지 주의보', alert:'dust', timeName:'황사 띠 통과까지',
-    values:{sky:[52,60], hill:[78,9999], river:[188,180], sea:[176,170]},
-    hazard:{cloud:{n:4, dps:11}},
-    rumor:'"산마루동 공장에서 유독가스 나온대. 엄마 친구가 그러던데?"',
+    values:{sky:[52,60], hill:[78,9999], river:[188,180], sea:[168,164]},
+    hazard:{cloud:{n:4, dps:17}},
+    rumors:['"산마루동 공장에서 유독가스 나온대. 엄마 친구가 그러던데?"','"마스크 두 겹 쓰면 미세먼지 100% 막힘 ㅋㅋ"','"미세먼지 심한 날 창문 열면 큰일 난대, 환기 절대 금지!"','"하늘동 미세먼지 1000 넘었다는 캡처 돌아다님"','"이번 황사에 방사능 섞여 있다는 소문 들음"','"바다 바람 불면 미세먼지 없어지니까 바다동은 안전함"'],
+    notePh:'예: 측정 위치(실내·실외)나 측정 기기가 달라서 값이 다를 수 있다. 그래서 나는 … 데이터를 보고 …하겠다.',
     privacy:{pos:[15,12], label:'CCTV 원본 영상', rows:300, text:'바다동 해안 산책로 CCTV 3시간 분량 (행인 얼굴이 그대로 보임)', src:'구청 CCTV 서버 원본',
       why:'얼굴이 드러난 영상은 개인을 알아볼 수 있는 비정형 데이터라 사생활 침해 위험이 큽니다. 미세먼지 판단에는 측정기 수치(정형 데이터)로 충분해요.'},
     intro:[
@@ -319,15 +326,16 @@ const MISSIONS = [
     key:'heat', short:'폭염', title:'임무 3 · 폭염', sensor:'체감온도 관측기',
     metric:'오늘 최고 체감온도', unit:'℃', digits:1, threshold:35, sd:2.6,
     rule:'최고 체감온도 35 ℃ 이상이 이틀 넘게 지속될 전망 → 폭염 경보', alert:'heat', timeName:'한낮 최고 기온까지',
-    values:{sky:[37.4,36.8], hill:[31.2,null], river:[32.6,33.2], sea:[30.4,31.0]},
-    hazard:{sun:{dps:3.6, heal:7}, strike:{every:3, dmg:12, r:46, name:'아스팔트 열기'}},
-    rumor:'"오늘 하늘동 체감온도 50도 넘었음 ㄷㄷ 계란 익는 중"',
+    values:{sky:[36.2,35.8], hill:[31.2,null], river:[32.6,33.2], sea:[30.4,31.0]},
+    hazard:{sun:{dps:6, heal:7}},
+    rumors:['"오늘 하늘동 체감온도 50도 넘었음 ㄷㄷ 계란 익는 중"','"선풍기 틀고 자면 죽는대, 진짜임"','"얼음물 한 번에 원샷하면 더위 바로 끝"','"강변동 무더위 쉼터 오늘 문 닫았대 (확인 안 됨)"','"바다동 해수욕장 물이 40도래"','"폭염엔 소금 한 숟가락 먹으면 끝!"'],
+    notePh:'예: 본인 동의를 받고, 이름처럼 누구인지 알 수 있는 정보를 지운 뒤, … 목적으로만 쓴다면 활용할 수 있다.',
     privacy:{pos:[3,13], label:'스마트워치 건강 기록', rows:300, text:'강변동 주민 85명의 이름과 심박수 · 수면 패턴', src:'건강 앱 서버 (동의 범위 확인 안 됨)',
       why:'스마트워치로 심박수·수면 패턴을 재면 건강 상태를 확인할 수 있지만, 이름이 붙은 건강 기록은 매우 민감한 개인정보예요. 동의 없이 모으면 사생활 침해가 됩니다.'},
     intro:[
       {who:'시스템', text:'임무 3 · 폭염\n8월 한낮 · 대원들이 야외에서 시설 점검 중'},
       {who:'나래', text:'햇볕 아래에 있으면 드론이 과열돼서 체력이 계속 줄어요. 초록 그늘 원 안에 들어가면 식으면서 회복돼요.'},
-      {who:'나래', text:'달궈진 아스팔트에서 갑자기 뜨거운 열기가 솟구치기도 해요. 데이터가 쌓이면 이것도 파란 원으로 예측해 드릴게요.'},
+      {who:'나래', text:'데이터가 쌓이면 지금 있는 곳의 체감온도를 예측해서, 가장 가까운 그늘이 어느 쪽인지 알려 드릴게요.'},
       {who:'나래', text:'같은 도시라도 건물이 빽빽한 곳과 바닷가는 더위가 달라요. 체감온도 데이터를 모아 폭염 위험 구역에만 경보를 보내요. 불필요한 경보도 줄여야 해요!'},
     ],
     q2:{q:'체감온도가 가장 높은 하늘동은 어떤 곳일까요?', opts:['건물과 아스팔트가 빽빽한 도심 (도시 열섬)','바다와 가장 가까운 곳','숲이 가장 많은 곳'], a:0,
@@ -507,7 +515,8 @@ function addRow(r){ r.t = +G.t.toFixed(1); G.rows.push(r); }
 function aiAcc(){
   const n = G.rows.filter(r=>r.kind!=='rumor').length;
   if (n < 150) return null;
-  return Math.max(30, Math.min(96, Math.round(50 + 46*(1-Math.exp(-(n-150)/700)) - G.rumorRows*4)));
+  // 150행에서 30%로 시작해 데이터가 쌓일수록 최대 70%까지 오름. 소문이 섞이면 떨어짐
+  return Math.max(15, Math.min(70, Math.round(30 + 40*(1-Math.exp(-(n-150)/300)) - G.rumorRows*4)));
 }
 
 /* ===================== 입력 ===================== */
@@ -555,7 +564,10 @@ function move(P,dx,dy){
 function hurt(dmg){
   const P=G.p; if (P.dash>0 || P.inv>0 || P.hp<=0) return;
   if (P.shield) dmg*=.25;
-  P.hp=Math.max(0,P.hp-dmg); P.hurt=.25;
+  P.hp=Math.max(0,P.hp-dmg); P.hurt=.25; G.flash=Math.min(1,(G.flash||0)+.25+dmg/40);
+  // 줄어든 체력을 숫자로 띄움 (계속 받는 피해는 모아서)
+  G.dmgAcc=(G.dmgAcc||0)+dmg;
+  if (G.dmgAcc>=3){ G.fx.push({kind:'num',x:P.x+rnd(-10,10),y:P.y-20,t:0,v:Math.round(G.dmgAcc)}); G.dmgAcc=0; }
 }
 function loseLife(){
   const P=G.p; S.lives--; G.lost++; S.total.lost++; keys.clear(); joy.on=false;
@@ -603,7 +615,7 @@ function update(dt){
     if (s.prog>=1){
       s.got=true;
       for (let k=0;k<40;k++){
-        const v = (s.v===null||s.v===-999||s.v===9999) ? s.v : noisy(m,s.v,.7);
+        const v = (s.v===null||s.v===-999||s.v===9999) ? s.v : noisy(m,s.v,1);
         addRow({kind:'sensor', d:s.d, v, src:`s:${s.d}-${s.i}`});
       }
       const vtxt = s.v===null?'값 없음 (결측)':fmt(s.v,m)+' '+m.unit;
@@ -629,7 +641,8 @@ function update(dt){
       b.dead=true;
       if (P.dash>0){ G.botsBroken++; G.fx.push({kind:'pop',x:b.x,y:b.y,t:0}); toast('가짜 뉴스 봇 차단! 검증되지 않은 정보를 막았어요.'); }
       else {
-        G.rumorRows++; addRow({kind:'rumor', d:null, v:null, src:'rumor'}); hurt(6);
+        const txt=m.rumors[G.rumorRows % m.rumors.length];
+        G.rumorRows++; addRow({kind:'rumor', d:null, v:null, src:'rumor', text:txt}); hurt(10);
         G.fx.push({kind:'pop',x:b.x,y:b.y,t:0,c:'#b98cff'});
         toast('검증되지 않은 소문이 데이터에 섞였어요!\nAI 예측 정확도가 떨어져요. (돌진으로 부술 수 있어요)', 2600);
       }
@@ -647,7 +660,7 @@ function update(dt){
       const x = near ? P.x+rnd(-90,90) : rnd(40,W-40), y = near ? P.y+rnd(-90,90) : rnd(40,H-40);
       // 예고는 오직 AI 예측으로만: 정확도만큼의 확률로 맞히고, 정확도가 높을수록 더 일찍 알려 줌
       const ai = !!acc && Math.random()*100 < acc;
-      const tele = ai ? .7 + (acc-50)/46*.9 : .9;
+      const tele = ai ? .6 + (acc-30)/40*.9 : .9;
       G.strikes.push({x,y,t:0,tele,ai});
     }
     for (const s of G.strikes){
@@ -659,19 +672,21 @@ function update(dt){
     }
     G.strikes=G.strikes.filter(s=>!s.hit);
   }
+  G.inCloud=false;
   if (hz.cloud){
     for (const c of G.clouds){
       c.x+=c.vx*dt; if (c.x-c.rx>W){ c.x=-c.rx-rnd(40,200); c.y=Math.random()<.7?rnd(380,540):rnd(110,220); }
       const nx=(P.x-c.x)/c.rx, ny=(P.y-c.y)/c.ry;
-      if (nx*nx+ny*ny<1) hurt(hz.cloud.dps*dt);
+      if (nx*nx+ny*ny<1){ G.inCloud=true; hurt(hz.cloud.dps*dt); }
     }
   }
   G.inShade=false;
   if (hz.sun){
-    G.inShade = SHADE.some(s=>Math.hypot(P.x-s.x,P.y-s.y)<s.r) || district(Math.floor(P.x/T),Math.floor(P.y/T))==='never';
+    G.inShade = SHADE.some(s=>Math.hypot(P.x-s.x,P.y-s.y)<s.r);
     if (G.inShade) P.hp=Math.min(100,P.hp+hz.sun.heal*dt); else hurt(hz.sun.dps*dt*(P.shield?2:1)); // 보호막(양산)은 hurt에서 75% 감소
   }
-  G.fx.forEach(f=>f.t+=dt); G.fx=G.fx.filter(f=>f.t<.5);
+  G.flash=Math.max(0,(G.flash||0)-dt*1.6);
+  G.fx.forEach(f=>f.t+=dt); G.fx=G.fx.filter(f=>f.t<(f.kind==='num'?.9:.5));
   if (P.hp<=0){ loseLife(); return; }
   // 분석 센터
   const tx=Math.floor(P.x/T), ty=Math.floor(P.y/T), inHQ=isHQ(tx,ty);
@@ -809,7 +824,7 @@ function render(t,dt){
   // 미세먼지는 눈에 잘 안 보임: AI 농도 지도가 켜져야 또렷해짐
   if (m.hazard.cloud) for (const c of G.clouds){
     const seen=!!acc;
-    if (acc && acc>=70){ ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(92,200,255,.85)'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); ctx.setLineDash([]);
+    if (acc && acc>=50){ ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(92,200,255,.85)'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle='#5cc8ff'; ctx.font='bold 12px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center'; ctx.fillText('3초 뒤 (AI 예측)',c.x+c.vx*3,c.y-c.ry-6); }
     const g=ctx.createRadialGradient(c.x,c.y,10,c.x,c.y,c.rx);
     if (seen){ g.addColorStop(0,'rgba(200,60,40,.5)'); g.addColorStop(.6,'rgba(230,150,40,.32)'); g.addColorStop(1,'rgba(230,150,40,0)'); }
@@ -821,9 +836,19 @@ function render(t,dt){
   for (const f of G.fx){
     if (f.kind==='bolt'){ const a=1-f.t/.5; ctx.strokeStyle=`rgba(255,255,255,${a})`; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(f.x+10,f.y-300); ctx.lineTo(f.x-12,f.y-180); ctx.lineTo(f.x+8,f.y-90); ctx.lineTo(f.x-6,f.y); ctx.stroke();
       ctx.fillStyle=`rgba(255,240,200,${a*.5})`; ctx.beginPath(); ctx.arc(f.x,f.y,m.hazard.strike.r,0,7); ctx.fill(); }
+    if (f.kind==='num'){ const a=1-f.t/.9; ctx.font='bold 18px "IBM Plex Mono", monospace'; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle=`rgba(11,22,38,${a})`; ctx.strokeText('−'+f.v,f.x,f.y-f.t*40); ctx.fillStyle=`rgba(255,93,79,${a})`; ctx.fillText('−'+f.v,f.x,f.y-f.t*40); }
     if (f.kind==='pop'){ const a=1-f.t/.5; ctx.strokeStyle=f.c?`rgba(185,140,255,${a})`:`rgba(255,176,32,${a})`; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(f.x,f.y,12+f.t*60,0,7); ctx.stroke(); }
   }
   drawWeather(m.key,t,dt);
+  // 폭염: AI가 가장 가까운 그늘을 화살표로 안내
+  if (m.hazard.sun && acc && !G.inShade){
+    const P=G.p, s=SHADE.reduce((a,b)=>Math.hypot(P.x-a.x,P.y-a.y)<Math.hypot(P.x-b.x,P.y-b.y)?a:b), ang=Math.atan2(s.y-P.y,s.x-P.x);
+    ctx.save(); ctx.translate(P.x+Math.cos(ang)*34,P.y+Math.sin(ang)*34); ctx.rotate(ang);
+    ctx.fillStyle='#5cc8ff'; ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-6,-8); ctx.lineTo(-6,8); ctx.fill(); ctx.restore();
+  }
+  // 피해를 받을 때 화면 가장자리가 붉게 (미세먼지 안에서는 계속 탁하게)
+  const fl=Math.max(G.flash||0, G.inCloud?.55:0);
+  if (fl>0){ const g=ctx.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.85); g.addColorStop(0,'rgba(255,60,40,0)'); g.addColorStop(1,`rgba(${G.inCloud?'150,90,30':'255,50,40'},${.5*fl})`); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
   if (joy.on){ ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(joy.ox,joy.oy,60,0,7); ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(joy.ox+joy.dx*60,joy.oy+joy.dy*60,20,0,7); ctx.fill(); }
 }
 function updateHud(){
@@ -837,14 +862,15 @@ function updateHud(){
   chips.push(acc ? `<span class="chip ai">AI 예측 정확도 ${acc}%</span>` : `<span class="chip">AI 학습 중 · 데이터 ${G.rows.filter(r=>r.kind!=='rumor').length}/150행 · 아직 예측 불가</span>`);
   if (m.hazard.strike){ const nxt=G.strikes.find(s=>s.ai); if (nxt) chips.push(`<span class="chip ai">AI: ${m.hazard.strike.name} ${Math.max(0,nxt.tele-nxt.t).toFixed(1)}초 뒤</span>`); }
   if (P.inv>0) chips.push('<span class="chip green">예비 드론 출동 · 잠깐 무적</span>');
-  if (m.hazard.sun) chips.push(G.inShade?'<span class="chip green">그늘에서 식는 중</span>':'<span class="chip red">햇볕 과열 중 · 초록 그늘로!</span>');
+  if (m.hazard.sun) chips.push(G.inShade?'<span class="chip green">그늘에서 식는 중</span>':`<span class="chip red">햇볕 과열 중 · 초록 그늘로!${acc?' (파란 화살표: AI 추천 그늘)':''}</span>`);
+  if (G.inCloud) chips.push(`<span class="chip red">미세먼지 흡입 중! 체력 −${m.hazard.cloud.dps}/초 · 먼지 밖으로 나가거나 E 보호막</span>`);
   if (G.bots.some(b=>Math.hypot(P.x-b.x,P.y-b.y)<130)) chips.push('<span class="chip red">가짜 뉴스 봇 접근! 돌진으로 부수세요</span>');
   if (P.shield) chips.push('<span class="chip ai">보호막 (피해 75% 감소)</span>');
   $('#chips').innerHTML=chips.join('');
   const last=G.rows.slice(-5);
   $('#log').innerHTML='<span class="h">t(초)  구역     '+m.metric.slice(0,10)+'</span>\n'+last.map(r=>{
     const where=r.d?DNAME[r.d]:'??';
-    const val=r.kind==='rumor'?'"소문" (출처 불명)':r.kind==='privacy'?'개인정보 ●●●':(r.v===null?'— 결측':fmt(r.v,m)+' '+m.unit);
+    const val=r.kind==='rumor'?'소문 '+(r.text||'').slice(0,18)+'…':r.kind==='privacy'?'개인정보 ●●●':(r.v===null?'— 결측':fmt(r.v,m)+' '+m.unit);
     return `${String(r.t).padStart(5)}  ${where.padEnd(4,'　')}  ${val}`;
   }).join('\n');
 }
@@ -877,13 +903,13 @@ function endPlay(){
   }
   const dr=G.rows.filter(r=>r.kind==='drone');
   groups.push({key:'drone', label:'데이터 드론 이동 관측 (지나간 모든 구역)', n:dr.length, show:`구역마다 값이 조금씩 흔들림`, bad:null});
-  if (G.rumorRows) groups.push({key:'rumor', label:'가짜 뉴스 봇이 퍼뜨린 제보', n:G.rumorRows, show:m.rumor, bad:'rumor'});
+  if (G.rumorRows) groups.push({key:'rumor', label:`가짜 뉴스 봇이 퍼뜨린 제보 (봇 ${G.rumorRows}개)`, n:G.rumorRows, show:G.rows.filter(r=>r.kind==='rumor').map(r=>esc(r.text)).join('<br>'), bad:'rumor'});
   if (G.privacy.taken) groups.push({key:'privacy', label:G.privacy.label, n:G.privacy.rows, show:G.privacy.text, bad:'privacy'});
   const pool=G.rows.filter(r=>r.kind==='drone'||r.kind==='sensor');
   for (let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
   // 그래프 세로축은 데이터 양을 바꿔도 고정 (막대가 흔들리는 모습을 그대로 비교하도록)
   const tops=DIST.map(d=>truthMean(m,d.id)); const hi=Math.max(m.threshold,...tops)+m.sd*2.2;
-  A={groups, pool, excluded:new Set(), miss:0, pct:100, top:hi};
+  A={groups, pool, excluded:new Set(), miss:0, pct:50, top:hi};
   S.total.rows+=G.rows.length; S.total.sensors+=G.sensors.filter(s=>s.got).length; S.total.botsBroken+=G.botsBroken; S.total.rumorRows+=G.rumorRows;
   $('#sc-analysis').innerHTML=`
     <div class="card" id="map-card"></div>
@@ -901,8 +927,9 @@ function endPlay(){
       <div class="step-head"><span class="step-no">② 데이터로 규칙 찾기</span><h2>구역별 ${m.metric}</h2></div>
       <p class="muted" style="font-size:14px">흰 점 = 측정값 하나하나, 막대 = 구역 평균, 막대 위 세로선 = 평균이 흔들릴 수 있는 범위(오차 범위), 노란 점선 = 경보 기준. 측정값은 시간과 장소에 따라 크게 흔들려요.</p>
       <div style="overflow-x:auto" id="chart"></div>
-      <div class="slider"><div class="lbl"><span>분석에 쓸 데이터 양 <span id="pct-n"></span></span><b class="mono" id="pct-l">100%</b></div>
-        <input type="range" id="pct" min="1" max="100" step="1" value="100" aria-label="분석에 쓸 데이터 양"></div>
+      <div class="slider"><div class="lbl"><span>분석에 쓸 데이터 양 <span id="pct-n"></span></span><b class="mono" id="pct-l">50%</b></div>
+        <input type="range" id="pct" min="1" max="100" step="1" value="50" aria-label="분석에 쓸 데이터 양"></div>
+      <p class="feedback" id="verdict"></p>
       <div class="row"><button class="btn ghost" id="btn-resample">다른 데이터로 다시 뽑기 ↻</button>
         <span class="muted" style="font-size:13px">같은 양을 무작위로 다시 뽑아요. 데이터가 적을 때와 많을 때 눌러서 막대가 얼마나 달라지는지 비교해 보세요.</span></div>
       <div class="q" id="q1"></div>
@@ -986,7 +1013,12 @@ function drawChart(target='#chart', pct=A.pct){
   const lo = m.key==='heat' ? 24 : 0;  // 체감온도는 24 ℃부터 그려 차이가 잘 보이게
   const raw=(A.top-lo)/5, p=10**Math.floor(Math.log10(raw)), f=raw/p, step=(f<=1?1:f<=2?2:f<=5?5:10)*p, top=lo+Math.ceil((A.top-lo)/step)*step;
   const y=v=>Tp+ih-(Math.max(lo,Math.min(top,v))-lo)/(top-lo)*ih;
-  if ($('#pct-n') && target==='#chart') $('#pct-n').textContent=`(측정값 ${st.total.toLocaleString()}개)`;
+  if ($('#pct-n') && target==='#chart'){
+    $('#pct-n').textContent=`(측정값 ${st.total.toLocaleString()}개)`;
+    // 지금 고른 데이터로 내린 판단: 데이터 양·뽑기에 따라 바뀔 수 있음
+    const over=DIST.filter(d=>st[d.id]&&st[d.id].mean>=m.threshold).map(d=>d.name), none=DIST.filter(d=>!st[d.id]).map(d=>d.name);
+    $('#verdict').innerHTML=`<b>이 데이터로 내린 판단</b> · 경보 기준을 넘은 구역: <b style="color:var(--alert)">${over.length?over.join(', '):'없음'}</b>${none.length?` · 데이터 없어 판단 불가: ${none.join(', ')}`:''}<br><span class="muted" style="font-size:13px">데이터 양을 바꾸거나 다시 뽑으면 이 판단이 달라질 수 있어요. 경보 단계에는 지금 고른 데이터 양(${pct}%)의 결과가 그대로 넘어가요.</span>`;
+  }
   let s=`<svg class="chart" viewBox="0 0 ${Wc} ${Hc}" role="img" aria-label="구역별 ${m.metric}">
     <defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#1a2f4d"/><line x1="0" y1="0" x2="0" y2="8" stroke="#4a6080" stroke-width="3"/></pattern></defs>`;
   for (let v=lo;v<=top+1e-9;v+=step) s+=`<line x1="${L}" x2="${Wc-R}" y1="${y(v)}" y2="${y(v)}" stroke="#2a4366"/><text x="${L-8}" y="${y(v)+4}" fill="#9fb3cc" font-size="12" text-anchor="end" font-family="IBM Plex Mono, monospace">${+v.toFixed(2)}</text>`;
@@ -1031,11 +1063,14 @@ function setupQuestions(){
     no:'슬라이더를 1%에 두고 "다시 뽑기"를 다섯 번쯤 눌러 막대 높이를 보세요. 100%에서도 똑같이 해 보세요.'}, ()=>question($('#q2'), m.q2, showAlert));
 }
 function showAlert(){
-  const m=G.m, st=districtStats(100), el=$('#an3'); el.hidden=false;
+  const m=G.m, el=$('#an3'); el.hidden=false;
+  $('#pct').disabled=true; $('#btn-resample').disabled=true;  // 경보 판단에 쓴 데이터를 고정
+  const st=districtStats(A.pct); A.usedPct=A.pct;
   A.sel=new Set(); A.atype=null;
   el.innerHTML=`
     <div class="step-head"><span class="step-no">③ 경보 발령</span><h2>정보를 판단으로</h2></div>
     <p>그래프를 근거로 <b>어떤 경보</b>를 <b>어느 구역</b>에 보낼지 정하세요. 위험한 구역을 놓치면 대원이 다치고, 안전한 구역에 경보를 남발하면 경보를 믿지 않게 돼요.</p>
+    <p class="feedback">아래 구역별 값은 위에서 고른 <b>데이터 ${A.pct}%</b>(측정값 ${st.total.toLocaleString()}개)로 계산한 결과예요. 데이터를 적게 썼다면 실제와 다를 수 있어요.</p>
     <div class="alert-grid">
       <div style="display:grid;gap:8px;min-width:0"><h3>1. 경보 종류</h3>
         <div class="atype">${ALERTS.map(a=>`<label><input type="radio" name="atype" id="at-${a.id}" value="${a.id}"><span><b>${a.name}</b><small>${a.act}</small></span></label>`).join('')}</div></div>
@@ -1056,7 +1091,7 @@ function showAlert(){
 
 /* ===================== 결과 ===================== */
 function evaluate(){
-  const m=G.m, seen=districtStats(100), right=A.atype===m.alert; let rescued=0, fa=0; const cards=[];
+  const m=G.m, seen=districtStats(A.usedPct), right=A.atype===m.alert; let rescued=0, fa=0; const cards=[];
   for (const d of DIST){
     const tm=truthMean(m,d.id), danger=tm>=m.threshold, sent=A.sel.has(d.id); let safe,res;
     if (danger&&sent&&right){safe=true;res='경보를 받고 대피 완료';}
@@ -1090,14 +1125,14 @@ function evaluate(){
         <div><b>${fa}</b><span>불필요한 경보</span></div>
       </div>
       <div class="pipeline">
-        <div class="pipe d"><b>데이터</b><span>${G.rows.length.toLocaleString()}행 수집 → 검증 후 ${used.toLocaleString()}행만 분석에 사용</span></div>
+        <div class="pipe d"><b>데이터</b><span>${G.rows.length.toLocaleString()}행 수집 → 검증 후 ${used.toLocaleString()}행 중 ${A.usedPct}%를 분석에 사용</span></div>
         <div class="pipe i"><b>정보</b><span>구역별 평균 ${m.metric} 그래프와 오차 범위, 경보 기준선</span></div>
         <div class="pipe k"><b>지식</b><span>${ALERTS.find(a=>a.id===A.atype).name}${right?'':' (알맞은 경보: '+ALERTS.find(a=>a.id===m.alert).name+')'} → ${A.sel.size?[...A.sel].map(d=>DNAME[d]).join(', '):'보낸 구역 없음'}</span></div>
       </div>
       <div class="concept"><h3>${m.concept.title}</h3><p>${m.concept.body}</p></div>
       <div class="think"><b>생각해 보기</b><p>${m.think}</p>
         <label for="note" class="muted" style="font-size:13px;margin-top:6px">나의 생각 (한두 문장으로 적어 보세요. 최종 보고서에 모아서 보여 줘요)</label>
-        <textarea id="note" maxlength="400" placeholder="예: 데이터를 그대로 믿으면 …"></textarea></div>
+        <textarea id="note" maxlength="400" placeholder="${esc(m.notePh)}"></textarea></div>
       <div class="row"><button class="btn" id="btn-next">${lastM?'마지막 선택으로':'다음 임무'}</button></div>
     </div>`;
   $('#note').value=S.total.notes[m.short]||'';
@@ -1157,9 +1192,14 @@ function finalReport(){
       <div class="think"><b>모둠 토의</b>
         <p>1. 이 게임의 "데이터 → 정보 → 지식" 과정을 우리 학교 생활에 적용한다면, 어떤 데이터를 모아 어떤 결정을 내릴 수 있을까요?</p>
         <p>2. 과학 실험, 유전체 분석, 신약 개발, 교통 중 한 분야를 골라 빅데이터가 어떻게 쓰이는지, 어떤 문제가 생길 수 있는지 정리해 보세요.</p></div>
-      <div class="row"><button class="btn" id="btn-again">처음부터 다시</button></div>
+      <div class="row"><button class="btn" id="btn-img">보고서를 이미지로 저장</button><button class="btn ghost" id="btn-again">처음 화면으로</button><span class="muted" id="img-msg" style="font-size:13px"></span></div>
+      <div id="img-out"></div>
     </div>`;
-  $('#btn-again').onclick=()=>{ S.m=0; resetTotal(); G=null; show('title'); };
+  $('#btn-again').onclick=()=>pageConfirm(
+    '정말 처음 화면으로 가시겠습니까?',
+    '지금까지의 구출 기록과 "나의 생각"이 모두 사라져요. 먼저 보고서를 이미지로 저장하거나 기록을 복사해 두었는지 확인하세요.',
+    '처음 화면으로', ()=>{ S.m=0; S.seenOpening=false; resetTotal(); G=null; show('title'); });
+  $('#btn-img').onclick=saveReportImage;
   const txt=`[데이터 구조대 최종 보고서] ${S.name} 대원\n구출 ${t.rescued}/${t.crew}명 · 데이터 ${t.rows}행 · 지켜 낸 개인정보 ${t.privBlocked}/3\n`
     + MISSIONS.map(mm=>`- ${mm.short}: ${mm.think}\n  → ${t.notes[mm.short]||'(적지 않음)'}`).join('\n')
     + `\n- 마지막 선택: ${t.vote||'(선택 안 함)'}`;
@@ -1168,6 +1208,30 @@ function finalReport(){
     catch { const ta=$('#copy-src'); ta.hidden=false; ta.value=txt; ta.select(); $('#copy-msg').textContent='자동 복사가 막혀 있어요. 아래 글을 선택해 Ctrl+C로 복사하세요.'; }
   };
   scrollTo({top:0});
+}
+
+/* 페이지용 확인 팝업 (브라우저 confirm 대신) */
+function pageConfirm(title, body, okLabel, onOk){
+  const card=$('#pmodal-card');
+  card.innerHTML=`<h3>${title}</h3><p>${body}</p><div class="row"><button class="btn" id="pm-cancel">아니요, 머물게요</button><button class="btn ghost" id="pm-ok">${okLabel}</button></div>`;
+  $('#pmodal').hidden=false; setTimeout(()=>$('#pm-cancel').focus(),30);
+  $('#pm-cancel').onclick=()=>{ $('#pmodal').hidden=true; };
+  $('#pm-ok').onclick=()=>{ $('#pmodal').hidden=true; onOk(); };
+}
+/* 최종 보고서를 PNG로 저장 */
+function loadScript(src){ return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=no; document.head.appendChild(s); }); }
+async function saveReportImage(){
+  const msg=$('#img-msg'), btn=$('#btn-img'); btn.disabled=true; msg.textContent='이미지를 만드는 중…';
+  try {
+    if (!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    const card=$('#sc-final .card');
+    const cnv=await html2canvas(card,{backgroundColor:'#13233a', scale:2, ignoreElements:el=>el.id==='img-out'||el.tagName==='BUTTON'||el.id==='copy-src'});
+    const url=cnv.toDataURL('image/png'), name=`데이터구조대_보고서_${S.name}.png`;
+    const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    $('#img-out').innerHTML=`<p class="muted" style="font-size:13px">파일이 내려받아지지 않았다면 아래 이미지를 마우스 오른쪽 버튼(휴대폰은 길게 누르기)으로 저장하세요.</p><img alt="최종 보고서 이미지" src="${url}">`;
+    msg.textContent='저장했어요!';
+  } catch(e){ msg.textContent='이미지를 만들지 못했어요. 인터넷 연결을 확인하거나 화면을 캡처해 주세요.'; }
+  btn.disabled=false;
 }
 
 /* ===================== 시작 ===================== */
