@@ -62,12 +62,17 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .key .g{color:var(--ok)} .key .r{color:var(--alert)} .key .p{color:var(--rumor)}
 
 /* 게임 무대 */
-.stage{position:relative;width:100%;aspect-ratio:960/600;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#20301f;
+.stage{position:relative;width:100%;aspect-ratio:960/600;margin-inline:auto;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#20301f;
   font-size:clamp(10px,1.45vw,14px);user-select:none;-webkit-user-select:none}
+/* 게임 화면이 세로 스크롤 없이 한 화면에 들어가게: 화면 높이에 맞춰 무대 폭을 줄임 */
+body:has(#sc-game:not([hidden])) .wrap{padding-block:8px}
+#sc-game .stage{width:min(100%, calc((100vh - 84px) * 1.6));width:min(100%, calc((100dvh - 84px) * 1.6))}
+#sc-game .ctrlbar{margin-top:8px!important;padding:5px 12px;max-width:min(100%, calc((100dvh - 84px) * 1.6));margin-inline:auto}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .hud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;gap:8px;padding:8px 10px;pointer-events:none}
 .hbox{background:rgba(11,22,38,.78);border:1px solid rgba(92,200,255,.25);border-radius:10px;padding:5px 9px;display:grid;gap:3px;min-width:0;line-height:1.3}
 @media (max-width:600px){.hud{padding:5px}.hbox{padding:3px 6px}.meter{width:72px;height:5px}}
+@media (max-width:600px){.chip.acc{font-size:1em;padding:2px 10px}.chip.acc .bar{width:40px}}
 .hbox .lbl{display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
 .hbox .lbl b{color:var(--text);font-family:var(--f-mono);font-weight:600}
 .meter{height:7px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden;width:clamp(90px,16vw,180px)}
@@ -77,6 +82,13 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:3px so
 .chiprow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;position:absolute;left:0;right:0;top:clamp(54px,9vw,66px);pointer-events:none;padding:0 8px}
 .chip{background:rgba(11,22,38,.85);border:1px solid var(--line);border-radius:999px;padding:2px 10px;white-space:nowrap}
 .chip.ai{border-color:var(--data);color:var(--data)}
+.chip.acc{font-size:1.2em;font-weight:700;padding:3px 14px;background:rgba(10,40,66,.92);border-width:2px;box-shadow:0 0 12px rgba(92,200,255,.55);display:inline-flex;align-items:center;gap:8px}
+.chip.acc b{font-family:var(--f-mono);font-size:1.15em;color:#fff}
+.chip.acc .bar{width:70px;height:7px;border-radius:9px;background:rgba(255,255,255,.15);overflow:hidden}
+.chip.acc .bar i{display:block;height:100%;background:var(--data)}
+.chip.learn{font-size:1.05em;font-weight:600;display:inline-flex;align-items:center;gap:8px}
+.chip.learn .bar{width:60px;height:6px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}
+.chip.learn .bar i{display:block;height:100%;background:var(--muted)}
 .chip.red{border-color:var(--alert);color:#ffb3ab}
 .chip.green{border-color:var(--ok);color:#a8f0cb}
 .log{position:absolute;left:10px;bottom:10px;background:rgba(11,22,38,.8);border:1px solid rgba(92,200,255,.25);border-radius:8px;
@@ -286,7 +298,7 @@ const ALERTS = [
 const MISSIONS = [
   {
     key:'rain', short:'집중호우', title:'임무 1 · 집중호우', sensor:'강우량계',
-    metric:'3시간 누적 강수량', unit:'mm', digits:0, threshold:90, sd:32,
+    metric:'3시간 누적 강수량', unit:'mm', digits:0, threshold:90, sd:48,
     rule:'3시간 누적 강수량 90 mm 이상 → 호우 경보 (기상청 기준)', alert:'rain', timeName:'비구름 도착까지',
     values:{sky:[30,38], hill:[98,-999], river:[126,118], sea:[58,64]},
     hazard:{strike:{every:1.5, dmg:20, r:48, name:'낙뢰'}},
@@ -307,7 +319,7 @@ const MISSIONS = [
   },
   {
     key:'dust', short:'미세먼지', title:'임무 2 · 미세먼지', sensor:'미세먼지 측정기',
-    metric:'최근 2시간 평균 PM10 농도', unit:'µg/m³', digits:0, threshold:150, sd:48,
+    metric:'최근 2시간 평균 PM10 농도', unit:'µg/m³', digits:0, threshold:150, sd:72,
     rule:'PM10 시간 평균 150 µg/m³ 이상이 2시간 넘게 지속 → 미세먼지 주의보', alert:'dust', timeName:'황사 띠 통과까지',
     values:{sky:[52,60], hill:[78,9999], river:[188,180], sea:[168,164]},
     hazard:{cloud:{n:4, dps:17}},
@@ -328,7 +340,7 @@ const MISSIONS = [
   },
   {
     key:'heat', short:'폭염', title:'임무 3 · 폭염', sensor:'체감온도 관측기',
-    metric:'오늘 최고 체감온도', unit:'℃', digits:1, threshold:35, sd:2.6,
+    metric:'오늘 최고 체감온도', unit:'℃', digits:1, threshold:35, sd:3.9,
     rule:'최고 체감온도 35 ℃ 이상이 이틀 넘게 지속될 전망 → 폭염 경보', alert:'heat', timeName:'한낮 최고 기온까지',
     values:{sky:[36.2,35.8], hill:[31.2,null], river:[32.6,33.2], sea:[30.4,31.0]},
     hazard:{sun:{dps:6, heal:7}},
@@ -506,7 +518,7 @@ function startMission(){
     privacy:{...m.privacy, x:m.privacy.pos[0]*T+T/2, y:m.privacy.pos[1]*T+T/2, done:false, taken:false},
     botsBroken:0, rumorRows:0, recalls:0, inHQ:false, beamToast:false,
   };
-  if (m.hazard.cloud) for (let i=0;i<m.hazard.cloud.n;i++) G.clouds.push({x:-40 - i*280, y: i===2 ? rnd(110,200) : rnd(370,530), rx:rnd(115,145), ry:rnd(68,88), vx:rnd(40,60)});
+  if (m.hazard.cloud) for (let i=0;i<m.hazard.cloud.n;i++) G.clouds.push({x:-40 - i*280, y: i===2 ? rnd(110,200) : rnd(370,530), rx:rnd(115,145), ry:rnd(68,88), vx:rnd(40,60)*SPEED});
   $('#h-mission').textContent = m.title;
   show('game'); cv.focus();
   const lines = (S.m===0 && !S.seenOpening ? STORY.opening : []).concat(m.intro).map(l=>({...l}));
@@ -530,6 +542,7 @@ document.addEventListener('touchmove',e=>{ if (e.touches.length>1) e.preventDefa
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 addEventListener('wheel',e=>{ if (e.ctrlKey) e.preventDefault(); },{passive:false});
 addEventListener('keydown',e=>{ if ((e.ctrlKey||e.metaKey) && ['+','=','-','_','0'].includes(e.key)) e.preventDefault(); });
+const SPEED=.8;  // 전체 움직임 빠르기 (1 = 처음 속도)
 const keys=new Set();
 const KM={ArrowUp:'u',KeyW:'u',ArrowDown:'d',KeyS:'d',ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r'};
 addEventListener('keydown',e=>{
@@ -558,9 +571,15 @@ $('#t-dash').addEventListener('pointerdown',e=>{ e.preventDefault(); doDash(); }
 $('#t-shield').addEventListener('pointerdown',e=>{ e.preventDefault(); keys.add('shield'); });
 ['pointerup','pointerleave','pointercancel'].forEach(ev=>$('#t-shield').addEventListener(ev,()=>keys.delete('shield')));
 function doDash(){
-  if (!G||G.phase!=='play'||G.p.dashCd>0) return;
-  const P=G.p; let dx=Math.cos(P.face), dy=Math.sin(P.face);
-  P.dash=.2; P.dashCd=1.0; P.dvx=dx; P.dvy=dy;
+  if (!G||G.phase!=='play') return;
+  const P=G.p;
+  if (P.dashCd>0){ P.dashQ=.3; return; }  // 쿨타임 중에 눌러도 0.3초 안에 끝나면 바로 돌진
+  P.dashQ=0;
+  let ix=0, iy=0;
+  if (keys.has('u')) iy-=1; if (keys.has('d')) iy+=1; if (keys.has('l')) ix-=1; if (keys.has('r')) ix+=1;
+  if (joy.on){ ix+=joy.dx; iy+=joy.dy; }
+  if (Math.hypot(ix,iy)>.1) P.face=Math.atan2(iy,ix);  // 지금 누르는 방향으로
+  P.dash=.3; P.dashCd=.7; P.dvx=Math.cos(P.face); P.dvy=Math.sin(P.face); P.dashHit=.45;
 }
 
 /* ===================== 갱신 ===================== */
@@ -602,11 +621,13 @@ function update(dt){
   if (joy.on){ ix+=joy.dx; iy+=joy.dy; }
   const L=Math.hypot(ix,iy); if (L>1){ ix/=L; iy/=L; }
   P.shield = keys.has('shield');
-  const spd = (P.shield?95:175)*dt;
+  const spd = (P.shield?95:175)*SPEED*dt;
   if (L>.1){ P.face=Math.atan2(iy,ix); }
-  if (P.dash>0){ P.dash-=dt; move(P,P.dvx*470*dt,P.dvy*470*dt); P.trail.push({x:P.x,y:P.y,a:.6}); }
+  if (P.dash>0){ P.dash-=dt; move(P,P.dvx*470*SPEED*dt,P.dvy*470*SPEED*dt); P.trail.push({x:P.x,y:P.y,a:.6}); }
   else move(P,ix*spd,iy*spd);
-  P.dashCd=Math.max(0,P.dashCd-dt); P.hurt=Math.max(0,P.hurt-dt); P.inv=Math.max(0,P.inv-dt);
+  P.dashCd=Math.max(0,P.dashCd-dt); P.dashHit=Math.max(0,(P.dashHit||0)-dt);
+  if (P.dashQ>0){ P.dashQ-=dt; if (P.dashCd<=0) doDash(); }
+  P.hurt=Math.max(0,P.hurt-dt); P.inv=Math.max(0,P.inv-dt);
   G.pathT-=dt; if (G.pathT<=0){ G.pathT=.3; G.path.push([P.x,P.y]); }
   P.trail.forEach(t=>t.a-=dt*2.5); P.trail=P.trail.filter(t=>t.a>0);
 
@@ -645,11 +666,12 @@ function update(dt){
   }
   for (const b of G.bots){
     const dx=P.x-b.x, dy=P.y-b.y, dd=Math.hypot(dx,dy)||1; b.w+=dt;
-    const sp = 72 + Math.min(40, G.t*.25);
+    const sp = (72 + Math.min(40, G.t*.25))*SPEED;
     b.x+=dx/dd*sp*dt + Math.cos(b.w*2)*20*dt; b.y+=dy/dd*sp*dt + Math.sin(b.w*2.4)*20*dt;
-    if (dd<24){
+    // 돌진 중(과 끝난 직후 잠깐)에는 더 넓은 범위에서 봇을 부숨
+    if (dd<(P.dashHit>0?40:24)){
       b.dead=true;
-      if (P.dash>0){ G.botsBroken++; G.fx.push({kind:'pop',x:b.x,y:b.y,t:0}); toast('가짜 뉴스 봇 차단! 검증되지 않은 정보를 막았어요.'); }
+      if (P.dashHit>0){ G.botsBroken++; G.fx.push({kind:'pop',x:b.x,y:b.y,t:0}); toast('가짜 뉴스 봇 차단! 검증되지 않은 정보를 막았어요.'); }
       else {
         const txt=m.rumors[G.rumorRows % m.rumors.length];
         G.rumorRows++; addRow({kind:'rumor', d:null, v:null, src:'rumor', text:txt}); hurt(10);
@@ -834,14 +856,13 @@ function render(t,dt){
   // 미세먼지는 눈에 잘 안 보임: AI 농도 지도가 켜져야 또렷해짐
   if (m.hazard.cloud) for (const c of G.clouds){
     const seen=!!acc;
-    if (acc && acc>=50){ ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(92,200,255,.85)'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle='#5cc8ff'; ctx.font='bold 12px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center'; ctx.fillText('3초 뒤 (AI 예측)',c.x+c.vx*3,c.y-c.ry-6); }
+    if (acc && acc>=50){ ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(92,200,255,.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); ctx.setLineDash([]);
+}
     const g=ctx.createRadialGradient(c.x,c.y,10,c.x,c.y,c.rx);
-    if (seen){ g.addColorStop(0,'rgba(200,60,40,.5)'); g.addColorStop(.6,'rgba(230,150,40,.32)'); g.addColorStop(1,'rgba(230,150,40,0)'); }
-    else { g.addColorStop(0,'rgba(170,135,90,.2)'); g.addColorStop(1,'rgba(170,135,90,0)'); }
+    if (seen){ g.addColorStop(0,'rgba(200,90,50,.28)'); g.addColorStop(.6,'rgba(230,160,60,.16)'); g.addColorStop(1,'rgba(230,160,60,0)'); }
+    else { g.addColorStop(0,'rgba(170,135,90,.12)'); g.addColorStop(1,'rgba(170,135,90,0)'); }
     ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx,c.ry,0,0,7); ctx.fill();
-    if (seen){ ctx.strokeStyle='rgba(255,170,60,.7)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx*.85,c.ry*.85,0,0,7); ctx.stroke();
-      ctx.fillStyle='#ffd2a0'; ctx.font='bold 12px "IBM Plex Sans KR", sans-serif'; ctx.textAlign='center'; ctx.fillText('PM10 고농도',c.x,c.y+4); }
+    if (seen){ ctx.strokeStyle='rgba(255,170,60,.38)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx*.85,c.ry*.85,0,0,7); ctx.stroke(); }
   }
   for (const f of G.fx){
     if (f.kind==='bolt'){ const a=1-f.t/.5; ctx.strokeStyle=`rgba(255,255,255,${a})`; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(f.x+10,f.y-300); ctx.lineTo(f.x-12,f.y-180); ctx.lineTo(f.x+8,f.y-90); ctx.lineTo(f.x-6,f.y); ctx.stroke();
@@ -857,7 +878,7 @@ function render(t,dt){
     ctx.fillStyle='#5cc8ff'; ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-6,-8); ctx.lineTo(-6,8); ctx.fill(); ctx.restore();
   }
   // 피해를 받을 때 화면 가장자리가 붉게 (미세먼지 안에서는 계속 탁하게)
-  const fl=Math.max(G.flash||0, G.inCloud?.55:0);
+  const fl=Math.max(G.flash||0, G.inCloud?.4:0);
   if (fl>0){ const g=ctx.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.85); g.addColorStop(0,'rgba(255,60,40,0)'); g.addColorStop(1,`rgba(${G.inCloud?'150,90,30':'255,50,40'},${.5*fl})`); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
   if (joy.on){ ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(joy.ox,joy.oy,60,0,7); ctx.stroke(); ctx.fillStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(joy.ox+joy.dx*60,joy.oy+joy.dy*60,20,0,7); ctx.fill(); }
 }
@@ -869,13 +890,16 @@ function updateHud(){
   $('#h-sensor').textContent=got+'/8'; $('#h-rows').textContent=G.rows.length.toLocaleString()+'행';
   $('#h-lives').textContent='♥'.repeat(Math.max(0,S.lives))+'♡'.repeat(Math.max(0,3-S.lives));
   const chips=[];
-  chips.push(acc ? `<span class="chip ai">AI 예측 정확도 ${acc}%</span>` : `<span class="chip">AI 학습 중 · 데이터 ${G.rows.filter(r=>r.kind!=='rumor').length}/150행 · 아직 예측 불가</span>`);
+  const nAi=G.rows.filter(r=>r.kind!=='rumor').length;
+  chips.push(acc ? `<span class="chip ai acc">AI 예측 정확도 <b>${acc}%</b><span class="bar"><i style="width:${acc/70*100}%"></i></span></span>`
+    : `<span class="chip learn">AI 학습 중 <span class="bar"><i style="width:${Math.min(100,nAi/150*100)}%"></i></span> ${nAi}/150행</span>`);
   if (m.hazard.strike){ const nxt=G.strikes.find(s=>s.ai); if (nxt) chips.push(`<span class="chip ai">AI: ${m.hazard.strike.name} ${Math.max(0,nxt.tele-nxt.t).toFixed(1)}초 뒤</span>`); }
   if (P.inv>0) chips.push('<span class="chip green">예비 드론 출동 · 잠깐 무적</span>');
   if (m.hazard.sun) chips.push(G.inShade?'<span class="chip green">그늘에서 식는 중</span>':`<span class="chip red">햇볕 과열 중 · 초록 그늘로!${acc?' (파란 화살표: AI 추천 그늘)':''}</span>`);
   if (G.inCloud) chips.push(`<span class="chip red">미세먼지 흡입 중! 체력 −${m.hazard.cloud.dps}/초 · 먼지 밖으로 나가거나 E 보호막</span>`);
   if (G.bots.some(b=>Math.hypot(P.x-b.x,P.y-b.y)<130)) chips.push('<span class="chip red">가짜 뉴스 봇 접근! 돌진으로 부수세요</span>');
   if (P.shield) chips.push('<span class="chip ai">보호막 (피해 75% 감소)</span>');
+  $('#t-dash').style.opacity = P.dashCd>0 ? .45 : 1;
   $('#chips').innerHTML=chips.join('');
   const last=G.rows.slice(-5);
   $('#log').innerHTML='<span class="h">t(초)  구역     '+m.metric.slice(0,10)+'</span>\n'+last.map(r=>{
@@ -1071,9 +1095,9 @@ function question(el, q, onRight){
 }
 function setupQuestions(){
   const m=G.m;
-  question($('#q1'), {q:'슬라이더를 왼쪽 끝(1%)에 두고 "다시 뽑기"를 여러 번 눌러 보세요. 그다음 오른쪽 끝(100%)에서도 눌러 보세요. 막대 높이가 덜 흔들리고 판단을 믿을 수 있는 쪽은?', opts:['데이터를 조금만 쓸 때','데이터를 전부 쓸 때 (빅데이터)','차이가 없다'], a:1,
+  question($('#q1'), {q:'슬라이더를 왼쪽(10%)에 두고 "다시 뽑기"를 여러 번 눌러 보세요. 그다음 오른쪽 끝(100%)에서도 눌러 보세요. 막대 높이가 덜 흔들리고 판단을 믿을 수 있는 쪽은?', opts:['데이터를 조금만 쓸 때','데이터를 전부 쓸 때 (빅데이터)','차이가 없다'], a:1,
     ok:'맞아요! 데이터가 적으면 뽑을 때마다 평균이 크게 달라져서, 같은 구역이 어떤 때는 기준을 넘고 어떤 때는 안 넘어요. 데이터가 많을수록 우연한 흔들림이 서로 상쇄되어 평균이 안정되고, 경보를 보낼지 믿고 판단할 수 있어요. 이것이 빅데이터를 쓰는 이유예요.',
-    no:'슬라이더를 1%에 두고 "다시 뽑기"를 다섯 번쯤 눌러 막대 높이를 보세요. 100%에서도 똑같이 해 보세요.'}, ()=>question($('#q2'), m.q2, showAlert));
+    no:'슬라이더를 10%에 두고 "다시 뽑기"를 다섯 번쯤 눌러 막대 높이를 보세요. 100%에서도 똑같이 해 보세요.'}, ()=>question($('#q2'), m.q2, showAlert));
 }
 function showAlert(){
   const m=G.m, el=$('#an3'); el.hidden=false;
