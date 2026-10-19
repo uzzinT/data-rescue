@@ -332,8 +332,8 @@ const MISSIONS = [
       why:'얼굴이 드러난 영상은 개인을 알아볼 수 있는 비정형 데이터라 사생활 침해 위험이 큽니다. 미세먼지 판단에는 측정기 수치(정형 데이터)로 충분해요.'},
     intro:[
       {who:'시스템', text:'임무 2 · 미세먼지\n황사와 미세먼지가 겹친 봄날'},
-      {who:'나래', text:'서쪽에서 미세먼지 덩어리가 바람을 타고 들어와요. 그런데 미세먼지는 눈으로 잘 안 보여요! 지금 화면에서도 아주 흐릿하게만 보일 거예요. 그 안에 있으면 체력이 계속 줄어요.'},
-      {who:'나래', text:'데이터가 150행 넘게 쌓이면 제가 농도 지도를 그려서 먼지 덩어리를 또렷하게 보여 드릴게요. 정확도가 더 오르면 3초 뒤 이동 위치도 점선으로 예측해요.'},
+      {who:'나래', text:'서쪽에서 미세먼지 덩어리가 바람을 타고 들어와요. 그런데 미세먼지는 눈으로 안 보여요! 지금 화면에서도 보이지 않아요. 그 안에 들어가면 화면이 탁해지고 체력이 계속 줄어요.'},
+      {who:'나래', text:'데이터가 150행 넘게 쌓이면 제가 먼지 덩어리가 있는 곳을 파란 점선으로 예측해 드릴게요. 정확도가 더 오르면 3초 뒤 이동 위치도 연한 점선으로 예측해요.'},
       {who:'나래', text:'에어코리아처럼 실시간으로 측정되는 미세먼지 농도를 모아, 대원들을 실내로 보내야 할 구역을 정해요.'},
     ],
     q2:{q:'미세먼지 농도가 높은 구역과 먼지 구름이 지나간 길을 비교하면?', opts:['먼지 구름이 자주 지나간 남쪽 구역과 겹친다','전혀 관계가 없다','먼지 구름이 지나간 곳이 오히려 낮다'], a:0,
@@ -859,15 +859,12 @@ function render(t,dt){
   for (const b of G.bots) drawBot(b,t);
   // 먼지 구름
   // 미세먼지는 눈에 잘 안 보임: AI 농도 지도가 켜져야 또렷해짐
-  if (m.hazard.cloud) for (const c of G.clouds){
-    const seen=!!acc;
-    if (acc && acc>=50){ ctx.setLineDash([6,6]); ctx.strokeStyle='rgba(92,200,255,.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); ctx.setLineDash([]);
-}
-    const g=ctx.createRadialGradient(c.x,c.y,10,c.x,c.y,c.rx);
-    if (seen){ g.addColorStop(0,'rgba(200,90,50,.28)'); g.addColorStop(.6,'rgba(230,160,60,.16)'); g.addColorStop(1,'rgba(230,160,60,0)'); }
-    else { g.addColorStop(0,'rgba(170,135,90,.12)'); g.addColorStop(1,'rgba(170,135,90,0)'); }
-    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx,c.ry,0,0,7); ctx.fill();
-    if (seen){ ctx.strokeStyle='rgba(255,170,60,.38)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx*.85,c.ry*.85,0,0,7); ctx.stroke(); }
+  // 미세먼지 덩어리 자체는 그리지 않음. AI가 켜진 뒤에 AI 예측(파란 점선)만 보임
+  if (m.hazard.cloud && acc) for (const c of G.clouds){
+    ctx.fillStyle='rgba(92,200,255,.1)'; ctx.strokeStyle='rgba(92,200,255,.75)'; ctx.lineWidth=2; ctx.setLineDash([6,6]);
+    ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx,c.ry,0,0,7); ctx.fill(); ctx.stroke();
+    if (acc>=50){ ctx.strokeStyle='rgba(92,200,255,.4)'; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); }  // 3초 뒤 위치
+    ctx.setLineDash([]);
   }
   for (const f of G.fx){
     if (f.kind==='bolt'){ const a=1-f.t/.5; ctx.strokeStyle=`rgba(255,255,255,${a})`; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(f.x+10,f.y-300); ctx.lineTo(f.x-12,f.y-180); ctx.lineTo(f.x+8,f.y-90); ctx.lineTo(f.x-6,f.y); ctx.stroke();
@@ -1100,9 +1097,9 @@ function question(el, q, onRight){
 }
 function setupQuestions(){
   const m=G.m;
-  question($('#q1'), {q:'슬라이더를 왼쪽(10%)에 두고 "다시 뽑기"를 여러 번 눌러 보세요. 그다음 오른쪽 끝(100%)에서도 눌러 보세요. 막대 높이가 덜 흔들리고 판단을 믿을 수 있는 쪽은?', opts:['데이터를 조금만 쓸 때','데이터를 전부 쓸 때 (빅데이터)','차이가 없다'], a:1,
+  question($('#q1'), {q:'슬라이더를 왼쪽 끝에 두고 "다시 뽑기"를 여러 번 눌러 보세요. 그다음 오른쪽 끝에서도 눌러 보세요. 막대 높이가 덜 흔들리고 판단을 믿을 수 있는 쪽은?', opts:['데이터를 조금만 쓸 때','데이터를 전부 쓸 때 (빅데이터)','차이가 없다'], a:1,
     ok:'맞아요! 데이터가 적으면 뽑을 때마다 평균이 크게 달라져서, 같은 구역이 어떤 때는 기준을 넘고 어떤 때는 안 넘어요. 데이터가 많을수록 우연한 흔들림이 서로 상쇄되어 평균이 안정되고, 경보를 보낼지 믿고 판단할 수 있어요. 이것이 빅데이터를 쓰는 이유예요.',
-    no:'슬라이더를 10%에 두고 "다시 뽑기"를 다섯 번쯤 눌러 막대 높이를 보세요. 100%에서도 똑같이 해 보세요.'}, ()=>question($('#q2'), m.q2, showAlert));
+    no:'슬라이더를 왼쪽 끝에 두고 "다시 뽑기"를 다섯 번쯤 눌러 막대 높이를 보세요. 오른쪽 끝에서도 똑같이 해 보세요.'}, ()=>question($('#q2'), m.q2, showAlert));
 }
 function showAlert(){
   const m=G.m, el=$('#an3'); el.hidden=false;
