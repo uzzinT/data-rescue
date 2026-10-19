@@ -858,7 +858,6 @@ function render(t,dt){
   drawPlayer(t);
   for (const b of G.bots) drawBot(b,t);
   // 먼지 구름
-  // 미세먼지는 눈에 잘 안 보임: AI 농도 지도가 켜져야 또렷해짐
   // 미세먼지 덩어리 자체는 그리지 않음. AI가 켜진 뒤에 AI 예측(파란 점선)만 보임
   if (m.hazard.cloud && acc) for (const c of G.clouds){
     ctx.fillStyle='rgba(92,200,255,.1)'; ctx.strokeStyle='rgba(92,200,255,.75)'; ctx.lineWidth=2; ctx.setLineDash([6,6]);
