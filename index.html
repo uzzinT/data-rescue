@@ -148,6 +148,7 @@ details.mapview canvas{display:block;width:100%;height:auto;border-radius:10px;b
 td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 .tag{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
 .tag.in{color:var(--ok);border-color:var(--ok)} .tag.out{color:var(--alert);border-color:var(--alert)}
+.guide{font-size:14px;background:rgba(255,176,32,.1);border:1px solid rgba(255,176,32,.45);border-radius:10px;padding:8px 12px}
 .feedback{font-size:14px;border-left:3px solid var(--line);padding:6px 12px}
 .feedback.good{border-color:var(--ok)} .feedback.bad{border-color:var(--alert)}
 .slider{display:grid;gap:6px}
@@ -212,7 +213,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
       <p class="kicker">DATA RESCUE · BIG DATA DISASTER RUN</p>
       <h1>데이터 <em>구조대</em></h1>
       <p class="sub">통합과학2 Ⅲ-1-02 과학 기술 사회에서 빅데이터 활용 · 2D 재난 구조 액션</p>
-      <input id="in-name" maxlength="10" placeholder="대원 이름 (예: 김민준)" aria-label="대원 이름">
+      <input id="in-name" maxlength="10" placeholder="대원 이름 (예: 정유진)" aria-label="대원 이름">
       <button class="btn" id="btn-start" style="font-size:18px;padding:13px 28px">재난 데이터센터 출근</button>
       <div class="keys">
         <div class="key"><b>WASD · 방향키</b>드론 이동<br>(휴대폰: 화면 왼쪽 끌기)</div>
@@ -337,7 +338,7 @@ const MISSIONS = [
       {who:'나래', text:'에어코리아처럼 실시간으로 측정되는 미세먼지 농도를 모아, 대원들을 실내로 보내야 할 구역을 정해요.'},
     ],
     q2:{q:'미세먼지 농도가 높은 구역과 먼지 구름이 지나간 길을 비교하면?', opts:['먼지 구름이 자주 지나간 남쪽 구역과 겹친다','전혀 관계가 없다','먼지 구름이 지나간 곳이 오히려 낮다'], a:0,
-      ok:'정답! 드론이 직접 겪은 현상과 측정 데이터가 같은 방향을 가리켜요. 서로 다른 데이터가 같은 결론을 가리킬수록 판단을 더 믿을 수 있어요.', no:'게임에서 먼지 구름이 주로 지나간 곳을 떠올리며 그래프를 다시 보세요.'},
+      ok:'정답! 드론이 직접 겪은 현상과 측정 데이터가 같은 방향을 가리켜요. 서로 다른 데이터가 같은 결론을 가리킬수록 판단을 더 믿을 수 있어요.', no:'위쪽 "게임 지도 다시 보기"에서 주황 안개(먼지 구름이 지나간 길)가 어느 구역에 많은지 보고 그래프와 비교해 보세요.'},
     concept:{title:'국가가 제공하는 실시간 생활 데이터', body:'에어코리아에서는 미세먼지와 오존 농도를, 국립해양조사원에서는 해수면 높이를 실시간으로 확인할 수 있어요. 교과서 탐구처럼 디지털 탐구 도구로 교실·운동장·체육관의 미세먼지를 직접 재 보면(예: 35, 50, 40 µg/m³) 환기를 할지, 야외 활동을 줄일지 판단하는 근거가 됩니다.'},
     think:'우리 교실에서 디지털 탐구 도구로 잰 미세먼지 농도가 에어코리아에서 발표한 우리 동네 값과 크게 다르다면, 그 까닭은 무엇일까요? 어느 데이터를 믿고 어떻게 행동해야 할까요?'
   },
@@ -523,7 +524,7 @@ function startMission(){
     privacy:{...m.privacy, x:m.privacy.pos[0]*T+T/2, y:m.privacy.pos[1]*T+T/2, done:false, taken:false},
     botsBroken:0, rumorRows:0, recalls:0, inHQ:false, beamToast:false,
   };
-  if (m.hazard.cloud) for (let i=0;i<m.hazard.cloud.n;i++) G.clouds.push({x:-40 - i*280, y: i===2 ? rnd(110,200) : rnd(370,530), rx:rnd(115,145), ry:rnd(68,88), vx:rnd(40,60)*SPEED});
+  if (m.hazard.cloud) for (let i=0;i<m.hazard.cloud.n;i++) G.clouds.push({x:-40 - i*280, y:rnd(400,540), rx:rnd(115,145), ry:rnd(68,88), vx:rnd(40,60)*SPEED});
   $('#h-mission').textContent = m.title;
   show('game'); cv.focus();
   const lines = (S.m===0 && !S.seenOpening ? STORY.opening : []).concat(m.intro).map(l=>({...l}));
@@ -634,6 +635,7 @@ function update(dt){
   if (P.dashQ>0){ P.dashQ-=dt; if (P.dashCd<=0) doDash(); }
   P.hurt=Math.max(0,P.hurt-dt); P.inv=Math.max(0,P.inv-dt);
   G.pathT-=dt; if (G.pathT<=0){ G.pathT=.3; G.path.push([P.x,P.y]); }
+  G.cloudT=(G.cloudT||0)-dt; if (G.clouds.length && G.cloudT<=0){ G.cloudT=1; (G.cloudPath||(G.cloudPath=[])).push(...G.clouds.filter(c=>c.x>-c.rx&&c.x<W+c.rx).map(c=>[c.x,c.y,c.rx,c.ry])); }
   P.trail.forEach(t=>t.a-=dt*2.5); P.trail=P.trail.filter(t=>t.a>0);
 
   // 드론 센서: 이동하며 주변 데이터 기록
@@ -712,7 +714,7 @@ function update(dt){
   G.inCloud=false;
   if (hz.cloud){
     for (const c of G.clouds){
-      c.x+=c.vx*dt; if (c.x-c.rx>W){ c.x=-c.rx-rnd(40,200); c.y=Math.random()<.7?rnd(380,540):rnd(110,220); }
+      c.x+=c.vx*dt; if (c.x-c.rx>W){ c.x=-c.rx-rnd(40,200); c.y=rnd(400,540); }
       const nx=(P.x-c.x)/c.rx, ny=(P.y-c.y)/c.ry;
       if (nx*nx+ny*ny<1){ G.inCloud=true; hurt(hz.cloud.dps*dt); }
     }
@@ -860,6 +862,9 @@ function render(t,dt){
   // 먼지 구름
   // 미세먼지 덩어리 자체는 그리지 않음. AI가 켜진 뒤에 AI 예측(파란 점선)만 보임
   if (m.hazard.cloud && acc) for (const c of G.clouds){
+    // 정확도만큼의 확률로만 예측이 보임 (1.5초마다 다시 정함)
+    c.aiT=(c.aiT||0)-dt; if (c.aiT<=0){ c.aiT=1.5; c.ai=Math.random()*100<acc; }
+    if (!c.ai) continue;
     ctx.fillStyle='rgba(92,200,255,.1)'; ctx.strokeStyle='rgba(92,200,255,.75)'; ctx.lineWidth=2; ctx.setLineDash([6,6]);
     ctx.beginPath(); ctx.ellipse(c.x,c.y,c.rx,c.ry,0,0,7); ctx.fill(); ctx.stroke();
     if (acc>=50){ ctx.strokeStyle='rgba(92,200,255,.4)'; ctx.beginPath(); ctx.ellipse(c.x+c.vx*3,c.y,c.rx,c.ry,0,0,7); ctx.stroke(); }  // 3초 뒤 위치
@@ -953,9 +958,10 @@ function endPlay(){
     <div class="card">
       <p class="eyebrow">${m.title} · 분석 센터</p>
       <div class="step-head"><span class="step-no">① 내가 모은 빅데이터</span><h2>출처별로 검증하기</h2></div>
-      <p>드론이 모은 데이터 <b class="mono">${G.rows.length.toLocaleString()}</b>행을 출처별로 묶었어요. 분석에 넣으면 안 되는 묶음을 찾아 <b>눌러서 제외</b>하세요.
+      <p>드론이 모은 데이터 <b class="mono">${G.rows.length.toLocaleString()}</b>행을 출처별로 묶었어요. 분석에 넣으면 안 되는 묶음을 찾아 제외하세요.
       측정 장비 오류값, 값이 없는 결측값, 출처를 알 수 없는 소문, 개인정보가 담긴 자료가 대상이에요.</p>
-      <div class="tablebox"><table><thead><tr><th>출처</th><th>행 수</th><th>내용</th><th>분석에</th></tr></thead><tbody id="g-rows"></tbody></table></div>
+      <p class="guide">👆 표의 <b>줄을 클릭(휴대폰은 터치)</b>할 때마다 오른쪽 칸이 <span class="tag in">사용</span> ↔ <span class="tag out">제외</span>로 바뀌어요. 분석에 넣을 묶음은 <b>사용</b>, 뺄 묶음은 <b>제외</b>로 두고 <b>검증 완료</b>를 누르세요.</p>
+      <div class="tablebox"><table><thead><tr><th>출처</th><th>행 수</th><th>내용</th><th>분석에 (클릭해서 바꾸기)</th></tr></thead><tbody id="g-rows"></tbody></table></div>
       <p class="muted" style="font-size:13px">참고: 이 지역 ${m.metric}의 정상 범위는 대략 ${m.key==='rain'?'0~200 mm':m.key==='dust'?'0~1000 µg/m³':'20~45 ℃'}예요.</p>
       <div class="row"><button class="btn" id="btn-clean">검증 완료</button></div>
       <div id="clean-fb"></div>
@@ -981,9 +987,10 @@ function endPlay(){
 // 게임 지도 다시 보기: 드론 이동 경로, 관측소 수집 여부, 대원 위치
 function mapDetails(open){
   const m=G.m, d=document.createElement('details'); d.className='mapview'; d.open=open;
-  d.innerHTML=`<summary>${m.title} 게임 지도 다시 보기</summary><p class="muted" style="font-size:13px;margin-top:6px">노란 선 = 드론이 지나간 길 · 초록 체크 = 내려받은 관측소 · 회색 = 못 간 관측소. 구역마다 대원이 한 명씩 있어요.</p>`;
+  d.innerHTML=`<summary>${m.title} 게임 지도 다시 보기</summary><p class="muted" style="font-size:13px;margin-top:6px">노란 선 = 드론이 지나간 길${m.hazard.cloud?' · 주황 안개 = 먼지 구름이 지나간 길':''} · 초록 체크 = 내려받은 관측소 · 회색 = 못 간 관측소. 구역마다 대원이 한 명씩 있어요.</p>`;
   const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
   if (!BG) BG=drawStaticMap(); g.drawImage(BG,0,0);
+  if (m.hazard.cloud) for (const [x,y,rx,ry] of (G.cloudPath||[])){ g.fillStyle='rgba(200,130,60,.035)'; g.beginPath(); g.ellipse(x,y,rx,ry,0,0,7); g.fill(); }
   if (m.hazard.sun) for (const s of SHADE){ g.strokeStyle='rgba(57,217,138,.7)'; g.setLineDash([5,4]); g.lineWidth=2; g.beginPath(); g.arc(s.x,s.y,s.r,0,7); g.stroke(); g.setLineDash([]); }
   g.strokeStyle='rgba(255,176,32,.85)'; g.lineWidth=3; g.lineJoin='round'; g.beginPath();
   G.path.forEach(([x,y],i)=>{ const pr=G.path[i-1]; if (!i || Math.hypot(x-pr[0],y-pr[1])>80) g.moveTo(x,y); else g.lineTo(x,y); }); g.stroke();
@@ -1224,7 +1231,7 @@ function finalReport(){
       <div class="think"><b>나의 생각 모음</b>
         ${MISSIONS.map(mm=>`<p><b style="color:var(--text)">${mm.short}</b> · ${esc(mm.think)}<br>→ ${t.notes[mm.short]?esc(t.notes[mm.short]):'<span class="muted">(적지 않음)</span>'}</p>`).join('')}
         <p><b style="color:var(--text)">마지막 선택</b> · ${esc(t.vote||'(선택 안 함)')}</p>
-        <div class="row"><button class="btn ghost" id="btn-copy">내 기록 복사하기</button><span class="muted" id="copy-msg" style="font-size:13px">복사해서 과제 게시판에 붙여 넣을 수 있어요.</span></div>
+        <div class="row"><button class="btn ghost" id="btn-copy">내 기록 복사하기</button><span class="muted" id="copy-msg" style="font-size:13px"></span></div>
         <textarea id="copy-src" readonly hidden></textarea>
       </div>
       <div class="think"><b>모둠 토의</b>
