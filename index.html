@@ -107,6 +107,9 @@ body:has(#sc-game:not([hidden])) .wrap{padding-block:8px}
 .touch .dash{background:rgba(255,176,32,.75);color:#1b1300}
 .touch .shield{background:rgba(92,200,255,.65);color:#04223a}
 @media (pointer:coarse){.touch{display:flex}}
+/* 조작키 안내 줄: 컴퓨터는 키보드, 휴대폰·태블릿은 터치 설명 */
+.ctrlbar .mob{display:none}
+@media (pointer:coarse){.ctrlbar .pc{display:none}.ctrlbar .mob{display:inline}}
 .modal{position:absolute;inset:0;background:rgba(5,10,20,.66);display:grid;place-items:center;padding:12px}
 .pmodal{position:fixed;inset:0;z-index:50;background:rgba(5,10,20,.72);display:grid;place-items:center;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -254,11 +257,11 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
       <div class="modal" id="modal" hidden><div class="card" id="modal-card" role="dialog" aria-modal="true"></div></div>
     </div>
     <div class="ctrlbar" style="margin-top:10px">
-      <span><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동</span>
-      <span><kbd>Space</kbd>/<kbd>Shift</kbd> 돌진 (봇 부수기)</span>
-      <span><kbd>E</kbd> 누르고 있기 보호막</span>
-      <span><kbd>H</kbd> 조작법·일시정지</span>
-      <span>휴대폰: 화면 끌어서 이동, 오른쪽 아래 버튼</span>
+      <span class="pc"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동</span>
+      <span class="pc"><kbd>Space</kbd>/<kbd>Shift</kbd> 돌진 (봇 부수기)</span>
+      <span class="pc"><kbd>E</kbd> 누르고 있기 보호막</span>
+      <span class="pc"><kbd>H</kbd> 조작법·일시정지</span>
+      <span class="mob">화면 끌기 = 이동 · <b style="color:var(--signal)">돌진</b> 버튼 = 봇 부수기 · <b style="color:var(--data)">보호막</b> 버튼 누르고 있기</span>
     </div>
   </section>
 
@@ -434,8 +437,10 @@ function drawStaticMap(){
   g.beginPath(); g.moveTo(hx+T,hy+38); g.lineTo(hx+T+8,hy+22); g.stroke();
   g.fillStyle='#ffb020'; g.font='bold 13px "IBM Plex Sans KR", sans-serif'; g.textAlign='center'; g.fillText('분석 센터',hx+T,hy+2*T-12);
   g.font='22px "Do Hyeon", sans-serif'; g.textAlign='left';
-  for (const [t,lx,ly] of [['하늘동',10,28],['산마루동',18*T+8,28],['강변동',10,8*T+28],['바다동',14*T+10,8*T+28]]){
-    g.fillStyle='rgba(11,22,38,.55)'; const w=g.measureText(t).width+14; g.fillRect(lx-7,ly-20,w,28); g.fillStyle='#fff'; g.fillText(t,lx,ly);
+  // 위쪽 두 구역 이름은 게임 상태 창에 가리지 않게 가운데 큰길 바로 위에 둠
+  for (let [t,lx,ly] of [['하늘동',10,7*T-12],['산마루동',-1,7*T-12],['강변동',10,8*T+28],['바다동',14*T+10,8*T+28]]){
+    const w=g.measureText(t).width+14; if (lx<0) lx=W-w-3;
+    g.fillStyle='rgba(11,22,38,.55)'; g.fillRect(lx-7,ly-20,w,28); g.fillStyle='#fff'; g.fillText(t,lx,ly);
   }
   return c;
 }
@@ -964,7 +969,7 @@ function endPlay(){
       <p class="muted" style="font-size:14px">흰 점 = 측정값 하나하나, 막대 = 구역 평균, 막대 위 세로선 = 평균이 흔들릴 수 있는 범위(오차 범위), 노란 점선 = 경보 기준. 측정값은 시간과 장소에 따라 크게 흔들려요.</p>
       <div style="overflow-x:auto" id="chart"></div>
       <div class="slider"><div class="lbl"><span>분석에 쓸 데이터 양 <span id="pct-n"></span></span><b class="mono" id="pct-l">50%</b></div>
-        <input type="range" id="pct" min="1" max="100" step="1" value="50" aria-label="분석에 쓸 데이터 양"></div>
+        <input type="range" id="pct" min="5" max="100" step="1" value="50" aria-label="분석에 쓸 데이터 양"></div>
       <p class="feedback" id="verdict"></p>
       <div class="row"><button class="btn ghost" id="btn-resample">다른 데이터로 다시 뽑기 ↻</button>
         <span class="muted" style="font-size:13px">같은 양을 무작위로 다시 뽑아요. 데이터가 적을 때와 많을 때 눌러서 막대가 얼마나 달라지는지 비교해 보세요.</span></div>
