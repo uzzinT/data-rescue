@@ -207,7 +207,8 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
 .tbadge{display:inline-block;font-size:12px;font-weight:700;color:#1b1300;background:var(--signal);border-radius:6px;padding:2px 8px}
 .tnote{font-size:14px;background:rgba(255,176,32,.12);border:1px dashed var(--signal);border-radius:10px;padding:8px 12px}
 .tskip{padding:4px 12px;font-size:13px}
-.pw{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;color:var(--text);font:inherit}
+/* 비밀번호 칸: 브라우저가 비밀번호로 저장·자동 입력하지 않게 일반 글 칸에 글자만 가림 */
+.pw{-webkit-text-security:disc;text-security:disc;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;color:var(--text);font:inherit}
 </style>
 
 <div class="wrap">
@@ -1317,10 +1318,10 @@ $('#btn-teacher').onclick=()=>{
   if (TEACHER){ setTeacher(false); return; }
   const card=$('#pmodal-card');
   card.innerHTML=`<h3>교사 모드</h3><p>게임을 직접 플레이하지 않고 분석 단계로 건너뛰고, 퀴즈·데이터 검증·경보의 정답을 미리 보여 주는 수업용 모드예요.</p>
-    <input class="pw" id="t-pw" type="password" inputmode="numeric" placeholder="교사 비밀번호" aria-label="교사 비밀번호" autocomplete="off">
+    <input class="pw" id="t-pw" type="text" inputmode="numeric" name="dr-tcode" placeholder="교사 비밀번호" aria-label="교사 비밀번호" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
     <p class="muted" id="t-msg" style="font-size:13px;min-height:1.2em"></p>
     <div class="row"><button class="btn" id="t-ok">들어가기</button><button class="btn ghost" id="t-cancel">취소</button></div>`;
-  $('#pmodal').hidden=false; setTimeout(()=>$('#t-pw').focus(),30);
+  $('#pmodal').hidden=false; setTimeout(()=>{ $('#t-pw').value=''; $('#t-pw').focus(); },30);
   const go=()=>{ if (pwHash($('#t-pw').value.trim())===TEACHER_KEY){ $('#pmodal').hidden=true; setTeacher(true); } else { $('#t-msg').textContent='비밀번호가 맞지 않아요.'; $('#t-pw').select(); } };
   $('#t-ok').onclick=go; $('#t-pw').onkeydown=e=>{ if (e.key==='Enter') go(); };
   $('#t-cancel').onclick=()=>{ $('#pmodal').hidden=true; };
