@@ -204,6 +204,10 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
   .pipeline{grid-template-columns:1fr}
   .log{display:none}
 }
+.tbadge{display:inline-block;font-size:12px;font-weight:700;color:#1b1300;background:var(--signal);border-radius:6px;padding:2px 8px}
+.tnote{font-size:14px;background:rgba(255,176,32,.12);border:1px dashed var(--signal);border-radius:10px;padding:8px 12px}
+.tskip{padding:4px 12px;font-size:13px}
+.pw{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;color:var(--text);font:inherit}
 </style>
 
 <div class="wrap">
@@ -215,6 +219,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
       <p class="sub">통합과학2 Ⅲ-1-02 과학 기술 사회에서 빅데이터 활용 · 2D 재난 구조 액션</p>
       <input id="in-name" maxlength="10" placeholder="대원 이름 (예: 정유진)" aria-label="대원 이름">
       <button class="btn" id="btn-start" style="font-size:18px;padding:13px 28px">재난 데이터센터 출근</button>
+      <div class="row" style="justify-content:center"><span class="tbadge" id="teacher-on" hidden>교사 모드 켜짐 · 게임 건너뛰기 · 정답 보기</span><button class="btn ghost" id="btn-teacher" style="font-size:13px;padding:5px 12px">교사 모드</button></div>
       <div class="keys">
         <div class="key"><b>WASD · 방향키</b>드론 이동<br>(휴대폰: 화면 왼쪽 끌기)</div>
         <div class="key"><b>스페이스 · Shift</b>돌진<br>위험 피하기 · <span class="p">봇 부수기</span></div>
@@ -258,6 +263,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
       <div class="modal" id="modal" hidden><div class="card" id="modal-card" role="dialog" aria-modal="true"></div></div>
     </div>
     <div class="ctrlbar" style="margin-top:10px">
+      <button class="btn tskip" id="btn-tskip" hidden>교사: 게임 건너뛰고 분석으로 ▶</button>
       <span class="pc"><kbd>WASD</kbd>/<kbd>방향키</kbd> 이동</span>
       <span class="pc"><kbd>Space</kbd>/<kbd>Shift</kbd> 돌진 (봇 부수기)</span>
       <span class="pc"><kbd>E</kbd> 누르고 있기 보호막</span>
@@ -980,6 +986,8 @@ function endPlay(){
     </div>
     <div class="card" id="an3" hidden></div>`;
   $('#map-card').appendChild(mapDetails(true));
+  if (TEACHER){ A.groups.filter(g=>g.bad).forEach(g=>A.excluded.add(g.key));
+    $('#g-rows').closest('.tablebox').insertAdjacentHTML('beforebegin','<p class="tnote"><span class="tbadge">교사용 정답</span> 분석에서 빼야 할 묶음을 미리 <b>제외</b>로 바꿔 두었어요. 줄을 눌러 바꿔 보며 설명한 뒤 <b>검증 완료</b>를 누르세요.</p>'); }
   renderGroups();
   $('#btn-clean').onclick=checkClean;
   show('analysis');
@@ -1100,6 +1108,11 @@ function question(el, q, onRight){
     b.onclick=()=>{ if (i===q.a){ b.classList.add('right'); box.querySelectorAll('button').forEach(x=>x.disabled=true); el.querySelector('.fb').innerHTML=`<p class="feedback good">${q.ok}</p>`; onRight&&onRight(); }
       else { b.classList.add('wrong'); b.disabled=true; el.querySelector('.fb').innerHTML=`<p class="feedback bad">${q.no}</p>`; } };
     box.appendChild(b); });
+  if (TEACHER){
+    box.querySelectorAll('button').forEach((b,i)=>{ b.disabled=true; if (i===q.a) b.classList.add('right'); });
+    const fb=el.querySelector('.fb'); fb.innerHTML=`<p class="feedback good"><span class="tbadge">정답</span> ${q.ok}</p>`;
+    if (onRight){ const nb=document.createElement('button'); nb.className='btn'; nb.style.marginTop='8px'; nb.textContent='다음 ▶'; nb.onclick=()=>{ nb.remove(); onRight(); }; fb.appendChild(nb); }
+  }
 }
 function setupQuestions(){
   const m=G.m;
@@ -1130,6 +1143,13 @@ function showAlert(){
   el.querySelectorAll('input[name=atype]').forEach(i=>i.onchange=()=>{A.atype=i.value; sum();});
   el.querySelectorAll('.dcard').forEach(b=>b.onclick=()=>{ const d=b.dataset.d; A.sel.has(d)?A.sel.delete(d):A.sel.add(d); const on=A.sel.has(d); b.setAttribute('aria-pressed',on); b.querySelector('.flag').textContent=on?'경보 보냄':'경보 안 보냄'; sum(); });
   $('#btn-send').onclick=evaluate;
+  if (TEACHER){
+    const ans=DIST.filter(d=>truthMean(m,d.id)>=m.threshold);
+    $('#at-'+m.alert).checked=true; A.atype=m.alert;
+    ans.forEach(d=>{ A.sel.add(d.id); const b=$('#dc-'+d.id); b.setAttribute('aria-pressed',true); b.querySelector('.flag').textContent='경보 보냄'; });
+    sum();
+    el.querySelector('.alert-grid').insertAdjacentHTML('beforebegin',`<p class="tnote"><span class="tbadge">교사용 정답</span> ${ALERTS.find(a=>a.id===m.alert).name} → ${ans.map(d=>d.name).join(', ')} (실제 평균 기준). 데이터를 적게 쓰면 위 값이 정답과 다르게 보일 수 있어요.</p>`);
+  }
   el.insertBefore(mapDetails(false), el.querySelector('.alert-grid'));
   el.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
 }
@@ -1281,7 +1301,59 @@ async function saveReportImage(){
 
 /* ===================== 시작 ===================== */
 function initTitle(){ BG=drawStaticMap(); $('#sc-title').style.backgroundImage=`url(${BG.toDataURL('image/png')})`; }
-$('#btn-start').onclick=()=>{ S.name=($('#in-name').value.trim()||'새내기').slice(0,10); startMission(); };
+$('#btn-start').onclick=()=>{ S.name=($('#in-name').value.trim()||(TEACHER?'교사':'새내기')).slice(0,10); startMission(); };
+
+/* ===================== 교사 모드 ===================== */
+// 수업 시연용: 게임을 건너뛰고, 퀴즈·데이터 검증·경보의 정답을 미리 보여 줌.
+// 비밀번호는 학생이 실수로 들어오지 않게 막는 가벼운 잠금이에요 (코드를 보면 알 수 있어 진짜 보안은 아님).
+// 비밀번호를 바꾸려면 새 비밀번호로 pwHash('새 비밀번호')를 계산해 TEACHER_KEY에 넣으세요.
+const TEACHER_KEY='1od7xsk';
+function pwHash(t){ let x=5381; for (const c of t) x=((x*33)^c.codePointAt(0))>>>0; return x.toString(36); }
+let TEACHER=false;
+try { TEACHER = sessionStorage.getItem('dr-teacher')==='1'; } catch(e){}
+function setTeacher(on){ TEACHER=on; try { on ? sessionStorage.setItem('dr-teacher','1') : sessionStorage.removeItem('dr-teacher'); } catch(e){} teacherUI(); }
+function teacherUI(){ $('#btn-teacher').textContent=TEACHER?'교사 모드 끄기':'교사 모드'; $('#teacher-on').hidden=!TEACHER; $('#btn-tskip').hidden=!TEACHER; }
+$('#btn-teacher').onclick=()=>{
+  if (TEACHER){ setTeacher(false); return; }
+  const card=$('#pmodal-card');
+  card.innerHTML=`<h3>교사 모드</h3><p>게임을 직접 플레이하지 않고 분석 단계로 건너뛰고, 퀴즈·데이터 검증·경보의 정답을 미리 보여 주는 수업용 모드예요.</p>
+    <input class="pw" id="t-pw" type="password" placeholder="교사 비밀번호" aria-label="교사 비밀번호" autocomplete="off">
+    <p class="muted" id="t-msg" style="font-size:13px;min-height:1.2em"></p>
+    <div class="row"><button class="btn" id="t-ok">들어가기</button><button class="btn ghost" id="t-cancel">취소</button></div>`;
+  $('#pmodal').hidden=false; setTimeout(()=>$('#t-pw').focus(),30);
+  const go=()=>{ if (pwHash($('#t-pw').value.trim())===TEACHER_KEY){ $('#pmodal').hidden=true; setTeacher(true); } else { $('#t-msg').textContent='비밀번호가 맞지 않아요.'; $('#t-pw').select(); } };
+  $('#t-ok').onclick=go; $('#t-pw').onkeydown=e=>{ if (e.key==='Enter') go(); };
+  $('#t-cancel').onclick=()=>{ $('#pmodal').hidden=true; };
+};
+// 게임 건너뛰기: 드론이 관측소 8곳을 모두 돈 것처럼 데이터를 만들어 분석 단계로
+$('#btn-tskip').onclick=teacherSkip;
+function teacherSkip(){
+  if (!TEACHER || !G || G.phase==='done') return;
+  const m=G.m;
+  DLG=null; $('#dialog').hidden=true; $('#modal').hidden=true; keys.clear(); joy.on=false;
+  G.rows=[]; G.path=[]; G.cloudPath=[]; G.t=0;
+  const home=[12.5*T,7.6*T], stops=[home, ...G.sensors.map(s=>[s.x,s.y]), home];
+  for (let k=1;k<stops.length;k++){
+    const [x0,y0]=stops[k-1], [x1,y1]=stops[k], n=Math.max(2,Math.round(Math.hypot(x1-x0,y1-y0)/12));
+    for (let j=0;j<n;j++){
+      const x=x0+(x1-x0)*j/n, y=y0+(y1-y0)*j/n; G.t+=.35; G.path.push([x,y]);
+      const d=district(Math.floor(x/T),Math.floor(y/T)); addRow({kind:'drone', d, v:noisy(m,truthMean(m,d),1), src:'drone'});
+    }
+    const s=G.sensors[k-1];
+    if (s){ s.got=true; for (let q=0;q<40;q++){ const v=(s.v===null||s.v===-999||s.v===9999)?s.v:noisy(m,s.v,1); addRow({kind:'sensor', d:s.d, v, src:`s:${s.d}-${s.i}`}); } }
+  }
+  // 가짜 뉴스 봇: 1개는 부수고 2개에 닿은 것으로 (검증 표 설명용)
+  G.botsBroken=1; G.rumorRows=0;
+  for (let i=0;i<2;i++){ G.rumorRows++; addRow({kind:'rumor', d:null, v:null, src:'rumor', text:m.rumors[i]}); }
+  G.privacy.done=true;
+  // 미세먼지: 먼지 구름이 100초 동안 지나간 길
+  for (let t=0;t<100;t++) for (const c of G.clouds){
+    c.x+=c.vx; if (c.x-c.rx>W){ c.x=-c.rx-rnd(40,200); c.y=rnd(400,540); }
+    if (c.x>-c.rx&&c.x<W+c.rx) G.cloudPath.push([c.x,c.y,c.rx,c.ry]);
+  }
+  G.time=0; endPlay();
+}
+teacherUI();
 initTitle();
 if (document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{ BG=null; initTitle(); });
 </script>
