@@ -1307,7 +1307,7 @@ $('#btn-start').onclick=()=>{ S.name=($('#in-name').value.trim()||(TEACHER?'교�
 // 수업 시연용: 게임을 건너뛰고, 퀴즈·데이터 검증·경보의 정답을 미리 보여 줌.
 // 비밀번호는 학생이 실수로 들어오지 않게 막는 가벼운 잠금이에요 (코드를 보면 알 수 있어 진짜 보안은 아님).
 // 비밀번호를 바꾸려면 새 비밀번호로 pwHash('새 비밀번호')를 계산해 TEACHER_KEY에 넣으세요.
-const TEACHER_KEY='1od7xsk';
+const TEACHER_KEY='yi1lz4';
 function pwHash(t){ let x=5381; for (const c of t) x=((x*33)^c.codePointAt(0))>>>0; return x.toString(36); }
 let TEACHER=false;
 try { TEACHER = sessionStorage.getItem('dr-teacher')==='1'; } catch(e){}
@@ -1317,7 +1317,7 @@ $('#btn-teacher').onclick=()=>{
   if (TEACHER){ setTeacher(false); return; }
   const card=$('#pmodal-card');
   card.innerHTML=`<h3>교사 모드</h3><p>게임을 직접 플레이하지 않고 분석 단계로 건너뛰고, 퀴즈·데이터 검증·경보의 정답을 미리 보여 주는 수업용 모드예요.</p>
-    <input class="pw" id="t-pw" type="password" placeholder="교사 비밀번호" aria-label="교사 비밀번호" autocomplete="off">
+    <input class="pw" id="t-pw" type="password" inputmode="numeric" placeholder="교사 비밀번호" aria-label="교사 비밀번호" autocomplete="off">
     <p class="muted" id="t-msg" style="font-size:13px;min-height:1.2em"></p>
     <div class="row"><button class="btn" id="t-ok">들어가기</button><button class="btn ghost" id="t-cancel">취소</button></div>`;
   $('#pmodal').hidden=false; setTimeout(()=>$('#t-pw').focus(),30);
