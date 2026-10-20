@@ -958,9 +958,10 @@ function endPlay(){
   for (let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
   // 그래프 세로축은 데이터 양을 바꿔도 고정 (막대가 흔들리는 모습을 그대로 비교하도록)
   const tops=DIST.map(d=>truthMean(m,d.id)); const hi=Math.max(m.threshold,...tops)+m.sd*2.2;
-  A={groups, pool, excluded:new Set(), miss:0, pct:50, top:hi};
+  A={groups, pool, excluded:new Set(), miss:0, pct:TEACHER?100:50, top:hi};
   S.total.rows+=G.rows.length; S.total.sensors+=G.sensors.filter(s=>s.got).length; S.total.botsBroken+=G.botsBroken; S.total.rumorRows+=G.rumorRows;
   $('#sc-analysis').innerHTML=`
+    ${TEACHER?teacherAnswers(groups):''}
     <div class="card" id="map-card"></div>
     <div class="card">
       <p class="eyebrow">${m.title} · 분석 센터</p>
@@ -977,8 +978,8 @@ function endPlay(){
       <div class="step-head"><span class="step-no">② 데이터로 규칙 찾기</span><h2>구역별 ${m.metric}</h2></div>
       <p class="muted" style="font-size:14px">흰 점 = 측정값 하나하나, 막대 = 구역 평균, 막대 위 세로선 = 평균이 흔들릴 수 있는 범위(오차 범위), 노란 점선 = 경보 기준. 측정값은 시간과 장소에 따라 크게 흔들려요.</p>
       <div style="overflow-x:auto" id="chart"></div>
-      <div class="slider"><div class="lbl"><span>분석에 쓸 데이터 양 <span id="pct-n"></span></span><b class="mono" id="pct-l">50%</b></div>
-        <input type="range" id="pct" min="5" max="100" step="1" value="50" aria-label="분석에 쓸 데이터 양"></div>
+      <div class="slider"><div class="lbl"><span>분석에 쓸 데이터 양 <span id="pct-n"></span></span><b class="mono" id="pct-l">${A.pct}%</b></div>
+        <input type="range" id="pct" min="5" max="100" step="1" value="${A.pct}" aria-label="분석에 쓸 데이터 양"></div>
       <p class="feedback" id="verdict"></p>
       <div class="row"><button class="btn ghost" id="btn-resample">다른 데이터로 다시 뽑기 ↻</button>
         <span class="muted" style="font-size:13px">같은 양을 무작위로 다시 뽑아요. 데이터가 적을 때와 많을 때 눌러서 막대가 얼마나 달라지는지 비교해 보세요.</span></div>
@@ -988,9 +989,10 @@ function endPlay(){
     <div class="card" id="an3" hidden></div>`;
   $('#map-card').appendChild(mapDetails(true));
   if (TEACHER){ A.groups.filter(g=>g.bad).forEach(g=>A.excluded.add(g.key));
-    $('#g-rows').closest('.tablebox').insertAdjacentHTML('beforebegin','<p class="tnote"><span class="tbadge">교사용 정답</span> 분석에서 빼야 할 묶음을 미리 <b>제외</b>로 바꿔 두었어요. 줄을 눌러 바꿔 보며 설명한 뒤 <b>검증 완료</b>를 누르세요.</p>'); }
+    $('#g-rows').closest('.tablebox').insertAdjacentHTML('beforebegin','<p class="tnote"><span class="tbadge">교사용 정답</span> 분석에서 빼야 할 묶음을 정답대로 <b>제외</b>하고 검증까지 마쳐 두었어요.</p>'); }
   renderGroups();
   $('#btn-clean').onclick=checkClean;
+  if (TEACHER) checkClean();  // 교사 모드: 모든 단계의 정답을 한 화면에 펼쳐 보임
   show('analysis');
 }
 // 게임 지도 다시 보기: 드론 이동 경로, 관측소 수집 여부, 대원 위치
@@ -1036,9 +1038,9 @@ function checkClean(){
     fb.innerHTML=`<p class="feedback good">검증 완료! ${out.length?'제외 — '+out.join(' · '):'이번에는 걸러 낼 자료가 없었어요.'}</p>`;
     A.locked=true; $('#btn-clean').disabled=true; document.querySelectorAll('#g-rows tr').forEach(tr=>tr.style.cursor='default');
     $('#an2').hidden=false; drawChart(); setupQuestions();
-    $('#pct').oninput=e=>{ A.pct=+e.target.value; $('#pct-l').textContent=A.pct+'%'; drawChart(); };
+    $('#pct').oninput=e=>{ A.pct=+e.target.value; if (TEACHER&&A.usedPct) A.usedPct=A.pct; $('#pct-l').textContent=A.pct+'%'; drawChart(); };
     $('#btn-resample').onclick=()=>{ const p=A.pool; for (let i=p.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [p[i],p[j]]=[p[j],p[i]]; } drawChart(); };
-    $('#an2').scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
+    if (!TEACHER) $('#an2').scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
     return;
   }
   A.miss++; S.total.cleanMiss++;
@@ -1112,7 +1114,7 @@ function question(el, q, onRight){
   if (TEACHER){
     box.querySelectorAll('button').forEach((b,i)=>{ b.disabled=true; if (i===q.a) b.classList.add('right'); });
     const fb=el.querySelector('.fb'); fb.innerHTML=`<p class="feedback good"><span class="tbadge">정답</span> ${q.ok}</p>`;
-    if (onRight){ const nb=document.createElement('button'); nb.className='btn'; nb.style.marginTop='8px'; nb.textContent='다음 ▶'; nb.onclick=()=>{ nb.remove(); onRight(); }; fb.appendChild(nb); }
+    if (onRight) onRight();
   }
 }
 function setupQuestions(){
@@ -1123,7 +1125,7 @@ function setupQuestions(){
 }
 function showAlert(){
   const m=G.m, el=$('#an3'); el.hidden=false;
-  $('#pct').disabled=true; $('#btn-resample').disabled=true;  // 경보 판단에 쓴 데이터를 고정
+  if (!TEACHER){ $('#pct').disabled=true; $('#btn-resample').disabled=true; }  // 경보 판단에 쓴 데이터를 고정 (교사 모드는 시연을 위해 계속 움직일 수 있음)
   const st=districtStats(A.pct); A.usedPct=A.pct;
   A.sel=new Set(); A.atype=null;
   el.innerHTML=`
@@ -1152,7 +1154,7 @@ function showAlert(){
     el.querySelector('.alert-grid').insertAdjacentHTML('beforebegin',`<p class="tnote"><span class="tbadge">교사용 정답</span> ${ALERTS.find(a=>a.id===m.alert).name} → ${ans.map(d=>d.name).join(', ')} (실제 평균 기준). 데이터를 적게 쓰면 위 값이 정답과 다르게 보일 수 있어요.</p>`);
   }
   el.insertBefore(mapDetails(false), el.querySelector('.alert-grid'));
-  el.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
+  if (!TEACHER) el.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
 }
 
 /* ===================== 결과 ===================== */
@@ -1326,6 +1328,16 @@ $('#btn-teacher').onclick=()=>{
   $('#t-ok').onclick=go; $('#t-pw').onkeydown=e=>{ if (e.key==='Enter') go(); };
   $('#t-cancel').onclick=()=>{ $('#pmodal').hidden=true; };
 };
+// 교사용 정답 한눈에 보기 (분석 화면 맨 위)
+function teacherAnswers(groups){
+  const m=G.m, ans=DIST.filter(d=>truthMean(m,d.id)>=m.threshold);
+  const why={error:'측정 장비 오류값',missing:'결측값',rumor:'검증되지 않은 소문',privacy:'개인정보'};
+  return `<div class="card tnote" style="gap:6px"><b><span class="tbadge">교사용 정답</span> ${m.title} 한눈에 보기</b>
+    <span>① 검증에서 제외: ${groups.filter(g=>g.bad).map(g=>`${g.label} (${why[g.bad]})`).join(', ')||'없음'}</span>
+    <span>② 질문 1: 데이터를 전부 쓸 때 (빅데이터) · 질문 2: ${m.q2.opts[m.q2.a]}</span>
+    <span>③ 경보: <b>${ALERTS.find(a=>a.id===m.alert).name}</b> → <b>${ans.map(d=>d.name).join(', ')}</b></span>
+    <span class="muted" style="font-size:13px">구역별 실제 평균: ${DIST.map(d=>`${d.name} ${fmt(truthMean(m,d.id),m)}`).join(' · ')} ${m.unit} (기준 ${m.threshold}) · 슬라이더는 100%에서 시작해요. 왼쪽으로 줄이고 "다시 뽑기"를 누르면 판단이 틀어지는 모습을 보여 줄 수 있어요.</span></div>`;
+}
 // 게임 건너뛰기: 드론이 관측소 8곳을 모두 돈 것처럼 데이터를 만들어 분석 단계로
 $('#btn-tskip').onclick=teacherSkip;
 function teacherSkip(){
@@ -1347,6 +1359,13 @@ function teacherSkip(){
   G.botsBroken=1; G.rumorRows=0;
   for (let i=0;i<2;i++){ G.rumorRows++; addRow({kind:'rumor', d:null, v:null, src:'rumor', text:m.rumors[i]}); }
   G.privacy.done=true;
+  // 데이터를 모두(100%) 쓰면 구역 평균이 실제 값과 같아지도록 드론 측정값을 살짝 옮김 (교사 시연에서 정답이 흔들리지 않게)
+  for (const d of DIST){
+    const ok=G.rows.filter(r=>r.d===d.id&&(r.kind==='drone'||r.kind==='sensor')&&r.v!==null&&r.v!==-999&&r.v!==9999), dr=ok.filter(r=>r.kind==='drone');
+    if (!dr.length) continue;
+    const shift=(truthMean(m,d.id)-ok.reduce((a,r)=>a+r.v,0)/ok.length)*ok.length/dr.length;
+    dr.forEach(r=>r.v+=shift);
+  }
   // 미세먼지: 먼지 구름이 100초 동안 지나간 길
   for (let t=0;t<100;t++) for (const c of G.clouds){
     c.x+=c.vx; if (c.x-c.rx>W){ c.x=-c.rx-rnd(40,200); c.y=rnd(400,540); }
