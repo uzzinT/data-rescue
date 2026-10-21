@@ -1364,7 +1364,7 @@ $('#btn-teacher').onclick=()=>{
     <input class="pw" id="t-pw" type="text" inputmode="numeric" name="dr-tcode" placeholder="교사 비밀번호" aria-label="교사 비밀번호" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
     <p class="muted" id="t-msg" style="font-size:13px;min-height:1.2em"></p>
     <div class="row"><button class="btn" id="t-ok">들어가기</button><button class="btn ghost" id="t-cancel">취소</button></div>`;
-  $('#pmodal').hidden=false; setTimeout(()=>{ $('#t-pw').value=''; $('#t-pw').focus(); },30);
+  $('#t-pw').value=''; $('#pmodal').hidden=false; setTimeout(()=>$('#t-pw').focus(),30);
   const go=()=>{ if (pwHash($('#t-pw').value.trim())===TEACHER_KEY){ $('#pmodal').hidden=true; setTeacher(true); } else { $('#t-msg').textContent='비밀번호가 맞지 않아요.'; $('#t-pw').select(); } };
   $('#t-ok').onclick=go; $('#t-pw').onkeydown=e=>{ if (e.key==='Enter') go(); };
   $('#t-cancel').onclick=()=>{ $('#pmodal').hidden=true; };
