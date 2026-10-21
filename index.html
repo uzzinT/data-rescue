@@ -208,6 +208,11 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
 .tnote{font-size:14px;background:rgba(255,176,32,.12);border:1px dashed var(--signal);border-radius:10px;padding:8px 12px}
 .tskip{padding:4px 12px;font-size:13px}
 /* 비밀번호 칸: 브라우저가 비밀번호로 저장·자동 입력하지 않게 일반 글 칸에 글자만 가림 */
+.howto{background:rgba(11,22,38,.82);border:1px solid var(--line);border-radius:12px;padding:12px 16px;text-align:left;max-width:640px;display:grid;gap:6px;font-size:14px}
+.howto ol{margin:0;padding-left:0;list-style:none;display:grid;gap:4px}
+.howto li b{color:var(--signal);margin-right:6px}
+.explain{font-size:14px;background:var(--panel-2);border-radius:10px;padding:10px 14px;display:grid;gap:4px}
+.explain ul{margin:0;padding-left:18px;display:grid;gap:2px}
 .pw{-webkit-text-security:disc;text-security:disc;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;color:var(--text);font:inherit}
 </style>
 
@@ -218,6 +223,15 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:n
       <p class="kicker">DATA RESCUE · BIG DATA DISASTER RUN</p>
       <h1>데이터 <em>구조대</em></h1>
       <p class="sub">통합과학2 Ⅲ-1-02 과학 기술 사회에서 빅데이터 활용 · 2D 재난 구조 액션</p>
+      <div class="howto">
+        <p><b>빅데이터</b>란 양이 아주 많고, 빠르게 쌓이고, 종류가 다양한 데이터예요. 이 게임에서는 빅데이터로 재난에서 대원들을 구해요.</p>
+        <ol>
+          <li><b>① 데이터 모으기 (게임)</b> 드론을 움직여 관측소의 측정값을 모아요. 측정값 하나가 데이터 한 줄(1행)이에요.</li>
+          <li><b>② 데이터 검증·분석</b> 틀린 데이터를 걸러 내고, 구역별 평균을 그래프로 그려요.</li>
+          <li><b>③ 경보 보내기</b> 그래프가 경보 기준을 넘은 구역에만 알맞은 경보를 보내요.</li>
+        </ol>
+        <p class="muted">임무는 집중호우 → 미세먼지 → 폭염, 모두 3개예요. 마지막에 최종 보고서가 나와요.</p>
+      </div>
       <input id="in-name" maxlength="10" placeholder="대원 이름 (예: 정유진)" aria-label="대원 이름">
       <button class="btn" id="btn-start" style="font-size:18px;padding:13px 28px">재난 데이터센터 출근</button>
       <div class="row" style="justify-content:center"><span class="tbadge" id="teacher-on" hidden>교사 모드 켜짐 · 게임 건너뛰기 · 정답 보기</span><button class="btn ghost" id="btn-teacher" style="font-size:13px;padding:5px 12px">교사 모드</button></div>
@@ -379,7 +393,11 @@ const STORY = {
     {who:'나', text:'현장에 나간 대원들은?'},
     {who:'나래', text:'하람, 도윤, 서아, 지호 대원이 네 구역에 흩어져 있어요. 그런데 통신망이 불안정해서 관측소 데이터가 센터로 들어오지 않아요.'},
     {who:'나래', text:'대원님이 데이터 드론을 조종해서 관측소 8곳의 데이터를 직접 내려받아 주세요. 드론 센서도 지나가는 곳의 데이터를 계속 기록해요.'},
-    {who:'나래', text:'조심하세요. 보라색 "가짜 뉴스 봇"이 검증되지 않은 소문을 뿌리고 다녀요. 닿으면 우리 데이터가 오염돼요. 돌진으로 부숴 버리세요!'},
+    {who:'나래', text:'측정값 하나가 데이터 한 줄(1행)이에요. 오른쪽 위 "데이터 ○행"이 지금까지 모은 양이에요. 이렇게 아주 많이 쌓인 데이터를 빅데이터라고 해요.'},
+    {who:'나래', text:'데이터가 150행을 넘으면 저(AI)도 위험이 어디에 생길지 예측할 수 있어요. 데이터가 많을수록 예측이 더 정확해져요. 화면 위 "AI 예측 정확도"를 보세요.'},
+    {who:'나래', text:'조심하세요. 보라색 "가짜 뉴스 봇"이 검증되지 않은 소문을 뿌리고 다녀요. 닿으면 우리 데이터가 오염되고 AI 정확도가 떨어져요. 돌진(스페이스)으로 부숴 버리세요!'},
+    {who:'나래', text:'빨간 자물쇠는 사람들의 개인정보가 담긴 자료예요. 데이터가 많아진다고 함부로 모으면 안 돼요. 다가가면 수집할지 직접 선택하게 될 거예요.'},
+    {who:'나래', text:'임무마다 100초예요. 관측소를 모두 돌았거나 시간이 다 되면 가운데 분석 센터로 돌아오세요. 그다음엔 모은 데이터를 함께 분석해요.'},
     {who:'나', text:'좋아. 데이터 드론, 출동!'},
   ],
   vote:{
@@ -495,6 +513,7 @@ function showHelp(){
   if (!G || G.phase==='done' || G.phase==='over' || !$('#modal').hidden) return;
   const prev=G.phase; G.phase='pause'; keys.clear(); joy.on=false;
   modal(`<h3>조작법 (일시정지)</h3>
+    <p><b>목표</b>: 관측소 8곳의 데이터를 모으고 분석 센터로 돌아오기 · 판단 기준: ${G.m.rule}</p>
     <div style="display:grid;gap:6px">
       <span><kbd>WASD</kbd> / <kbd>방향키</kbd> 드론 이동 · 휴대폰은 화면을 끌어서 이동</span>
       <span><kbd>Space</kbd> / <kbd>Shift</kbd> 돌진: 위험 피하기, 가짜 뉴스 봇 부수기</span>
@@ -502,6 +521,8 @@ function showHelp(){
       <span><b style="color:var(--data)">파란 기둥</b> 관측소 위에 잠시 머물면 데이터 내려받기</span>
       <span><b style="color:var(--data)">파란 원</b> AI가 예측한 위험 위치 (데이터가 150행 넘으면 켜짐)</span>
       <span><b style="color:var(--signal)">분석 센터</b>에 들어가면 임무 종료 · 분석 시작</span>
+      <span><b style="color:var(--rumor)">보라 봇</b> 가짜 뉴스. 닿으면 소문이 데이터에 섞이고 AI 정확도가 떨어져요.</span>
+      <span><b style="color:var(--alert)">빨간 자물쇠</b> 개인정보가 담긴 자료. 수집할지 직접 골라요.</span>
       <span>드론은 3대. 3대를 모두 잃으면 임무 1부터 다시 시작해요.</span>
     </div>`, [{label:'계속하기', onClick:()=>{ G.phase = prev==='pause' ? 'play' : prev; }}]);
 }
@@ -534,7 +555,8 @@ function startMission(){
   if (m.hazard.cloud) for (let i=0;i<m.hazard.cloud.n;i++) G.clouds.push({x:-40 - i*280, y:rnd(400,540), rx:rnd(115,145), ry:rnd(68,88), vx:rnd(40,60)*SPEED});
   $('#h-mission').textContent = m.title;
   show('game'); cv.focus();
-  const lines = (S.m===0 && !S.seenOpening ? STORY.opening : []).concat(m.intro).map(l=>({...l}));
+  const lines = (S.m===0 && !S.seenOpening ? STORY.opening : []).concat(m.intro,
+    [{who:'시스템', text:`이번 임무 목표\n① 파란 관측소 8곳에서 ${m.metric} 데이터 모으기\n② 판단 기준: ${m.rule}`}]).map(l=>({...l}));
   S.seenOpening = true;
   dialog(lines, ()=>{ G.phase='play'; toast('관측소 8곳의 데이터를 내려받고\n분석 센터로 돌아오세요'); });
 }
@@ -697,6 +719,7 @@ function update(dt){
   G.bots=G.bots.filter(b=>!b.dead);
   // 위험 요소
   const acc=aiAcc();
+  if (acc && !G.aiToast){ G.aiToast=true; toast(`AI 예측 시작! 데이터가 150행 넘게 쌓였어요.\n이제 나래가 위험을 파란색으로 미리 알려 줘요. 데이터를 더 모을수록 정확해져요.`, 3600); }
   const hz=m.hazard;
   if (hz.strike){
     G.strikeT-=dt;
@@ -746,14 +769,14 @@ function update(dt){
 }
 function askFinish(){
   const got=G.sensors.filter(s=>s.got).length; G.phase='pause'; keys.clear(); joy.on=false;
-  modal(`<h3>분석 센터 도착</h3><p>관측소 <b class="mono">${got}/8</b>곳 · 데이터 <b class="mono">${G.rows.length}</b>행을 모았어요. ${got<8?'관측소를 더 돌면 비어 있는 구역 없이 판단할 수 있어요.':'모든 관측소의 데이터를 모았어요!'}</p>`,
+  modal(`<h3>분석 센터 도착</h3><p>관측소 <b class="mono">${got}/8</b>곳 · 데이터 <b class="mono">${G.rows.length}</b>행을 모았어요. ${got<8?'관측소를 더 돌면 비어 있는 구역 없이 판단할 수 있어요.':'모든 관측소의 데이터를 모았어요!'}</p><p class="muted">분석 시작을 누르면 모은 데이터를 ① 검증하고 ② 그래프로 정리한 뒤 ③ 경보를 보내요.</p>`,
     got<8 ? [{label:'더 수집하기',cls:'ghost',onClick:()=>G.phase='play'},{label:'분석 시작',onClick:endPlay}] : [{label:'분석 시작',onClick:endPlay}]);
 }
 function privacyChoice(){
   const pv=G.privacy; G.phase='pause';
   modal(`<p class="eyebrow" style="color:var(--alert)">개인정보 포함</p><h3>대량 데이터 발견! +${pv.rows}행</h3>
     <div class="item privacy"><b>${pv.label}</b><span>${pv.text}</span><span class="src">출처: ${pv.src}</span></div>
-    <p class="muted">수집하면 데이터 행 수가 크게 늘어 AI 예측 정확도가 올라가요. 수집할까요?</p>`,
+    <p class="muted"><b>개인정보</b>란 이름, 전화번호, 얼굴, 사는 곳·다니는 곳처럼 특정한 사람을 알아볼 수 있는 정보예요. 이 자료를 수집하면 데이터 행 수가 크게 늘어 AI 예측 정확도가 올라가요. 하지만 본인 동의 없이 모으면 사생활 침해가 될 수 있어요. 수집할까요?</p>`,
   [
     {label:'수집하지 않는다', onClick:()=>{ S.total.privBlocked++; modal(`<h3 style="color:var(--ok)">개인정보를 지켰어요</h3><p>${pv.why}</p>`,[{label:'계속',onClick:()=>G.phase='play'}]); }},
     {label:'수집한다', cls:'ghost', onClick:()=>{
@@ -966,8 +989,13 @@ function endPlay(){
     <div class="card">
       <p class="eyebrow">${m.title} · 분석 센터</p>
       <div class="step-head"><span class="step-no">① 내가 모은 빅데이터</span><h2>출처별로 검증하기</h2></div>
-      <p>드론이 모은 데이터 <b class="mono">${G.rows.length.toLocaleString()}</b>행을 출처별로 묶었어요. 분석에 넣으면 안 되는 묶음을 찾아 제외하세요.
-      측정 장비 오류값, 값이 없는 결측값, 출처를 알 수 없는 소문, 개인정보가 담긴 자료가 대상이에요.</p>
+      <p>드론이 모은 데이터 <b class="mono">${G.rows.length.toLocaleString()}</b>행을 어디서 왔는지(출처)에 따라 묶었어요. 모은 데이터를 그대로 믿으면 안 돼요. 틀린 데이터가 섞이면 평균이 틀어지고 판단도 틀려요. 이렇게 믿을 수 있는 데이터인지 확인하는 일을 <b>데이터 검증</b>이라고 해요.</p>
+      <div class="explain"><b>이런 묶음은 분석에서 빼세요 (제외)</b><ul>
+        <li><b>측정 장비 오류값</b>: 장비가 고장 나면 -999, 9999처럼 실제로 나올 수 없는 값을 보내요. 모든 행이 똑같은 값이면 의심하세요.</li>
+        <li><b>결측값</b>: 값이 비어 있는(— 값 없음) 데이터예요. 평균을 낼 수 없어요.</li>
+        <li><b>검증되지 않은 소문</b>: 가짜 뉴스 봇이 퍼뜨린 제보는 출처를 알 수 없어요.</li>
+        <li><b>개인정보</b>: 동의 없이 모은 개인정보는 쓰면 안 돼요.</li></ul>
+        <span class="muted">값이 크기만 한 것은 오류가 아니에요. 같은 구역의 다른 측정기 값과 비교해 보세요.</span></div>
       <p class="guide">👆 표의 <b>줄을 클릭(휴대폰은 터치)</b>할 때마다 오른쪽 칸이 <span class="tag in">사용</span> ↔ <span class="tag out">제외</span>로 바뀌어요. 분석에 넣을 묶음은 <b>사용</b>, 뺄 묶음은 <b>제외</b>로 두고 <b>검증 완료</b>를 누르세요.</p>
       <div class="tablebox"><table><thead><tr><th>출처</th><th>행 수</th><th>내용</th><th>분석에 (클릭해서 바꾸기)</th></tr></thead><tbody id="g-rows"></tbody></table></div>
       <p class="muted" style="font-size:13px">참고: 이 지역 ${m.metric}의 정상 범위는 대략 ${m.key==='rain'?'0~200 mm':m.key==='dust'?'0~1000 µg/m³':'20~45 ℃'}예요.</p>
@@ -976,8 +1004,14 @@ function endPlay(){
     </div>
     <div class="card" id="an2" hidden>
       <div class="step-head"><span class="step-no">② 데이터로 규칙 찾기</span><h2>구역별 ${m.metric}</h2></div>
-      <p class="muted" style="font-size:14px">흰 점 = 측정값 하나하나, 막대 = 구역 평균, 막대 위 세로선 = 평균이 흔들릴 수 있는 범위(오차 범위), 노란 점선 = 경보 기준. 측정값은 시간과 장소에 따라 크게 흔들려요.</p>
+      <p>검증한 측정값 수백 개(<b>데이터</b>)를 구역별 평균으로 정리해 그래프로 그렸어요. 이렇게 정리해서 뜻을 알 수 있게 만든 것을 <b>정보</b>라고 해요.</p>
+      <div class="explain"><b>그래프 읽는 법</b><ul>
+        <li><b>흰 점</b>: 측정값 하나하나. 같은 구역이라도 시간과 장소에 따라 값이 크게 흔들려요.</li>
+        <li><b>막대 높이</b>: 그 구역 측정값의 평균. 막대 위 숫자가 평균값이에요.</li>
+        <li><b>막대 위 세로선(오차 범위)</b>: 실제 평균이 이 범위 안에 있을 가능성이 높다는 뜻. 세로선이 길수록 평균을 덜 믿을 수 있어요.</li>
+        <li><b>노란 점선</b>: 경보 기준(${m.threshold} ${m.unit}). 막대가 점선보다 높으면 빨간색 = 위험 구역이에요.</li></ul></div>
       <div style="overflow-x:auto" id="chart"></div>
+      <p class="muted" style="font-size:14px"><b style="color:var(--text)">슬라이더</b>는 모은 데이터 중 얼마만큼만 골라 분석할지 정해요. 왼쪽으로 갈수록 적게, 오른쪽 끝은 전부 써요. 움직이면 그래프와 아래 판단이 바로 바뀌어요.</p>
       <div class="slider"><div class="lbl"><span>분석에 쓸 데이터 양 <span id="pct-n"></span></span><b class="mono" id="pct-l">${A.pct}%</b></div>
         <input type="range" id="pct" min="5" max="100" step="1" value="${A.pct}" aria-label="분석에 쓸 데이터 양"></div>
       <p class="feedback" id="verdict"></p>
@@ -1130,7 +1164,12 @@ function showAlert(){
   A.sel=new Set(); A.atype=null;
   el.innerHTML=`
     <div class="step-head"><span class="step-no">③ 경보 발령</span><h2>정보를 판단으로</h2></div>
-    <p>그래프를 근거로 <b>어떤 경보</b>를 <b>어느 구역</b>에 보낼지 정하세요. 위험한 구역을 놓치면 대원이 다치고, 안전한 구역에 경보를 남발하면 경보를 믿지 않게 돼요.</p>
+    <p>이제 정보를 바탕으로 무엇을 할지 정해요. 이렇게 정보로 내린 판단과 대책을 <b>지식</b>이라고 해요.</p>
+    <div class="explain"><b>경보 보내는 법</b><ul>
+      <li>1. 이번 재난에 맞는 <b>경보 종류</b>를 하나 고르세요.</li>
+      <li>2. 그래프에서 평균이 기준(${m.threshold} ${m.unit})을 넘은 구역 카드를 눌러 <b>경보 보냄</b>으로 바꾸세요. 다시 누르면 취소돼요.</li>
+      <li>3. <b>경보 발송</b>을 누르면 실제 값(정답)과 비교해 결과가 나와요.</li></ul>
+      <span class="muted">위험한 구역을 놓치면 대원이 다치고, 안전한 구역에 경보를 보내면 "불필요한 경보"가 돼요. 경보가 자꾸 틀리면 사람들이 경보를 믿지 않게 돼요.</span></div>
     <p class="feedback">아래 구역별 값은 위에서 고른 <b>데이터 ${A.pct}%</b>(측정값 ${st.total.toLocaleString()}개)로 계산한 결과예요. 데이터를 적게 썼다면 실제와 다를 수 있어요.</p>
     <div class="alert-grid">
       <div style="display:grid;gap:8px;min-width:0"><h3>1. 경보 종류</h3>
@@ -1184,6 +1223,7 @@ function evaluate(){
     <div class="card">
       <p class="eyebrow">${m.title} 결과</p>
       <h2>대원 4명 중 ${rescued}명 안전 <span style="color:var(--signal)">${'★'.repeat(stars)}</span><span style="color:var(--line)">${'★'.repeat(3-stars)}</span></h2>
+      <p class="muted" style="font-size:14px">결과는 실제 값(정답)과 비교해 매겨요. 아래 세 가지를 지킬 때마다 별을 하나씩 받아요.</p>
       <div class="stars">${crit.map(c=>`<span class="${c.ok?'on':'off'}">${c.ok?'★':'☆'} ${c.t}</span>`).join('')}</div>
       <div class="crewlist">${cards.join('')}</div>
       <div class="score">
@@ -1192,6 +1232,7 @@ function evaluate(){
         <div><b>${G.botsBroken} / ${G.rumorRows}</b><span>부순 봇 / 섞인 소문</span></div>
         <div><b>${fa}</b><span>불필요한 경보</span></div>
       </div>
+      <h3>이번 임무에서 한 일: 데이터 → 정보 → 지식</h3>
       <div class="pipeline">
         <div class="pipe d"><b>데이터</b><span>${G.rows.length.toLocaleString()}행 수집 → 검증 후 ${used.toLocaleString()}행 중 ${A.usedPct}%를 분석에 사용</span></div>
         <div class="pipe i"><b>정보</b><span>구역별 평균 ${m.metric} 그래프와 오차 범위, 경보 기준선</span></div>
