@@ -79,3 +79,7 @@
   - 2D 액션판: https://claude.ai/artifact/MGHgsG8bajkNgKoaF2fUgd
   - 1차 초안: https://claude.ai/artifact/DJJngsb6egTtRUbFnryJ2W
 - 교과서·지도서 PDF, 한글 파일, 지도서 페이지 이미지는 저작권 때문에 **저장소에 올리지 않는다**. 지도서 페이지를 볼 때는 `tools/render-pdf-pages.ps1`로 로컬에서만 이미지로 뽑는다.
+
+## 작업 마무리 규칙
+
+- 작업이 끝나면 작업한 브랜치를 `main`에 머지하고, `main`을 GitHub에 push까지 한다. 사용자가 따로 요청하지 않아도 이렇게 한다.
